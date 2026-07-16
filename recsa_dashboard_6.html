@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RECSA · Control P&amp;L</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1EEE6;
+    --paper-dim:#E6E2D6;
+    --ink:#211F1B;
+    --ink-soft:#5B564C;
+    --steel:#28323C;
+    --steel-2:#3A4856;
+    --line:#C9C2AF;
+    --accent:#B5621F;
+    --accent-soft:#E8D4B8;
+    --good:#3D6B4C;
+    --good-bg:#DCE8DD;
+    --bad:#A7372A;
+    --bad-bg:#F2DCD7;
+    --neutral-bg:#fff;
+    --radius:3px;
+    --mono:'IBM Plex Mono', monospace;
+    --sans:'IBM Plex Sans', sans-serif;
+    --disp:'Space Grotesk', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    background-image:
+      linear-gradient(var(--paper-dim) 1px, transparent 1px),
+      linear-gradient(90deg, var(--paper-dim) 1px, transparent 1px);
+    background-size:28px 28px;
+    background-position:-1px -1px;
+  }
+  ::selection{background:var(--accent-soft);}
+
+  header.top{
+    background:var(--steel);
+    color:#EDEAE0;
+    padding:22px 28px 18px;
+    border-bottom:4px solid var(--accent);
+  }
+  .top-row{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;}
+  .brand-eyebrow{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:#B9C2C9;
+    margin:0 0 4px;
+  }
+  .brand-title{
+    font-family:var(--disp);
+    font-size:30px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .brand-title span{color:var(--accent);}
+  .top-meta{
+    font-family:var(--mono);
+    font-size:12px;
+    color:#9FAAB2;
+    text-align:right;
+  }
+  .top-meta b{color:#EDEAE0;}
+
+  nav.tabs{
+    display:flex;
+    gap:2px;
+    padding:0 28px;
+    background:var(--steel-2);
+    border-bottom:1px solid #1d252c;
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    appearance:none;border:none;background:transparent;color:#AEB8BF;
+    font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;
+    padding:13px 16px;cursor:pointer;border-bottom:3px solid transparent;
+    white-space:nowrap;text-transform:uppercase;
+  }
+  nav.tabs button:hover{color:#fff;}
+  nav.tabs button.active{color:#fff;border-bottom-color:var(--accent);background:rgba(255,255,255,0.03);}
+
+  main{padding:24px 28px 80px;max-width:1480px;margin:0 auto;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* readout cards */
+  .readouts{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;margin-bottom:24px;}
+  .readout{
+    background:var(--neutral-bg);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px 14px 10px;
+    position:relative;
+  }
+  .readout .lbl{
+    font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--ink-soft);margin-bottom:6px;display:block;
+  }
+  .readout input{
+    width:100%;border:none;background:transparent;font-family:var(--mono);
+    font-size:22px;font-weight:600;color:var(--ink);padding:0;
+    border-bottom:1.5px dashed var(--line);
+  }
+  .readout input:focus{outline:none;border-bottom-color:var(--accent);}
+  .readout .src{
+    font-family:var(--mono);font-size:9.5px;color:#9C9484;margin-top:6px;
+  }
+  .readout.locked{background:var(--paper-dim);}
+  .readout.locked .lbl{color:var(--ink-soft);}
+
+  /* KPI strip */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:24px;}
+  .kpi{background:var(--neutral-bg);padding:16px 16px 14px;}
+  .kpi .k-lbl{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);}
+  .kpi .k-val{font-family:var(--disp);font-size:26px;font-weight:700;margin-top:4px;}
+  .kpi .k-val.good{color:var(--good);}
+  .kpi .k-val.bad{color:var(--bad);}
+  .kpi .k-sub{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:2px;}
+
+  section.block{margin-bottom:28px;}
+  h2.section-title{
+    font-family:var(--disp);font-size:16px;font-weight:700;margin:0 0 12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  h2.section-title::after{content:"";flex:1;height:1px;background:var(--line);}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .toolbar input[type=search]{
+    font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:var(--radius);background:#fff;min-width:240px;
+  }
+  .toolbar select{font-family:var(--mono);font-size:12.5px;padding:7px 8px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;}
+  .btn{
+    font-family:var(--mono);font-size:12px;letter-spacing:.03em;text-transform:uppercase;
+    border:1px solid var(--steel);background:var(--steel);color:#fff;
+    padding:8px 14px;border-radius:var(--radius);cursor:pointer;
+  }
+  .btn.outline{background:#fff;color:var(--steel);}
+  .btn:hover{background:var(--accent);border-color:var(--accent);}
+  .btn.outline:hover{background:var(--accent-soft);color:var(--ink);border-color:var(--accent);}
+  .toolbar .spacer{flex:1;}
+  .toolbar .hint{font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+
+  table.dt{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px;background:#fff;}
+  table.dt thead th{
+    position:sticky;top:0;background:var(--steel);color:#EDEAE0;
+    font-weight:500;text-transform:uppercase;font-size:10.5px;letter-spacing:.05em;
+    padding:9px 8px;text-align:right;cursor:pointer;border-right:1px solid #1d252c;
+  }
+  table.dt thead th:first-child,table.dt thead th:nth-child(2){text-align:left;cursor:default;}
+  table.dt thead th.sortable:hover{background:var(--steel-2);}
+  table.dt tbody td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--paper-dim);white-space:nowrap;}
+  table.dt tbody td:first-child,table.dt tbody td:nth-child(2){text-align:left;white-space:normal;}
+  table.dt tbody tr:hover{background:#FAF8F2;}
+  table.dt tbody tr.group-row{background:var(--paper-dim);font-weight:600;cursor:pointer;}
+  table.dt tbody tr.group-row td{padding:9px 8px;border-bottom:1px solid var(--line);}
+  table.dt tbody tr.group-row .gname{display:flex;align-items:center;gap:6px;}
+  table.dt tbody tr.group-row .chev{display:inline-block;transition:transform .15s;font-size:10px;}
+  table.dt tbody tr.group-row.collapsed .chev{transform:rotate(-90deg);}
+  table.dt tbody tr.prod-row.hidden{display:none;}
+  table.dt tbody td.neg{color:var(--bad);}
+  table.dt tbody td.pos{color:var(--good);}
+  table.dt input.cell-edit{
+    width:64px;text-align:right;font-family:var(--mono);font-size:12.5px;
+    border:1px solid transparent;background:transparent;padding:2px 4px;border-radius:2px;
+  }
+  table.dt input.cell-edit:hover{border-color:var(--line);}
+  table.dt input.cell-edit:focus{outline:none;border-color:var(--accent);background:#fff;}
+  td.warn-flag{color:var(--accent);font-weight:600;}
+
+  .table-wrap{max-height:560px;overflow:auto;border:1px solid var(--line);}
+
+  .note{
+    font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);
+    background:var(--paper-dim);border-left:3px solid var(--accent);padding:10px 12px;margin-bottom:18px;
+  }
+
+  footer.foot{
+    text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);
+    padding:30px 0 10px;
+  }
+  @media (max-width:680px){
+    .brand-title{font-size:22px;}
+    main{padding:16px;}
+  }
+
+  th.pe-col, td.pe-col{}
+  body.hide-pe .pe-col{display:none;}
+  th.lower-col, td.lower-col{}
+  body.hide-lower .lower-col{display:none;}
+
+  @media print{
+    header.top, nav.tabs, .toolbar, footer.foot{display:none !important;}
+    body{background:#fff;}
+    main{padding:0;max-width:none;}
+    .panel{display:none !important;}
+    .panel[data-panel="precios"].printing{display:block !important;}
+    .table-wrap{max-height:none;overflow:visible;border:none;}
+    table.dt thead th{position:static;background:var(--steel) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    table.dt tbody tr.group-row{background:var(--paper-dim) !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    table.dt tbody tr.prod-row.hidden{display:none;}
+    .note{display:block;}
+    section.block{page-break-inside:auto;}
+  }
+
+  /* ---- password gate ---- */
+  #lockScreen{
+    position:fixed;inset:0;background:var(--steel);z-index:9999;
+    display:flex;align-items:center;justify-content:center;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size:28px 28px;
+  }
+  #lockBox{
+    background:var(--paper);border:1px solid var(--line);border-top:4px solid var(--accent);
+    border-radius:var(--radius);padding:32px 30px 26px;width:320px;max-width:90vw;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  #lockBox h2{font-family:var(--disp);font-size:19px;margin:0 0 4px;color:var(--ink);}
+  #lockBox p{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);margin:0 0 18px;}
+  #lockBox input[type=password]{
+    width:100%;font-family:var(--mono);font-size:14px;padding:10px 12px;
+    border:1px solid var(--line);border-radius:var(--radius);margin-bottom:10px;background:#fff;
+  }
+  #lockBox input[type=password]:focus{outline:none;border-color:var(--accent);}
+  #lockBox button{
+    width:100%;font-family:var(--mono);font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;
+    border:1px solid var(--steel);background:var(--steel);color:#fff;padding:10px;border-radius:var(--radius);cursor:pointer;
+  }
+  #lockBox button:hover{background:var(--accent);border-color:var(--accent);}
+  #lockError{font-family:var(--mono);font-size:11px;color:var(--bad);min-height:16px;margin-top:8px;}
+  body.locked > header, body.locked > nav, body.locked > main, body.locked > footer{
+    filter:blur(6px);pointer-events:none;user-select:none;
+  }
+</style>
+</head>
+<body class="locked">
+
+<div id="lockScreen">
+  <div id="lockBox">
+    <h2>RECSA — Acceso restringido</h2>
+    <p>Ingresá la clave para ver el dashboard.</p>
+    <input type="password" id="lockInput" placeholder="Clave" autofocus>
+    <button id="lockBtn">Entrar</button>
+    <div id="lockError"></div>
+  </div>
+</div>
+
+
+<header class="top">
+  <div class="top-row">
+    <div>
+      <p class="brand-eyebrow">Pérdidas &amp; Ganancias · Versión propia / editable</p>
+      <h1 class="brand-title">RECSA <span>—</span> Control P&amp;L</h1>
+    </div>
+    <div class="top-meta">
+      Base original: <b id="srcDate">RECSA_PL_2026-06_actualizado</b><br>
+      <span id="prodCount">143</span> productos · <span id="lineCount">15</span> líneas
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="pl">P&amp;L</button>
+  <button class="tab-btn" data-tab="ebitdareal">EBITDA Real (Anual)</button>
+  <button class="tab-btn" data-tab="gastos">Asignación de Gastos</button>
+  <button class="tab-btn" data-tab="inventario">Costo Inventario</button>
+  <button class="tab-btn" data-tab="precios">Lista de Precios</button>
+  <button class="tab-btn" data-tab="base">Datos base</button>
+  <button class="tab-btn" data-tab="notas">Notas / Metodología</button>
+</nav>
+
+<main>
+
+  <!-- shared parameter readouts, always visible at top of P&L -->
+  <div class="panel active" data-panel="pl">
+    <div class="note">Tocá cualquier número con borde punteado para editarlo. Todo el P&amp;L (márgenes, EBITDA, totales) se recalcula al instante.</div>
+
+    <section class="block">
+      <h2 class="section-title">Parámetros</h2>
+      <div class="readouts" id="readoutsPL"></div>
+    </section>
+
+    <section class="block">
+      <h2 class="section-title">Resultado consolidado</h2>
+      <div class="kpis" id="kpiStrip"></div>
+    </section>
+
+    <section class="block">
+      <h2 class="section-title">Volumen y Facturación — ventas jul'25–jun'26</h2>
+      <div class="note" style="margin-bottom:14px;">Desglose de la fuente usada en "Volumen total" y "Revenue total" de arriba. Datos de tu planilla de ventas anual, mensualizados (÷12).</div>
+      <table class="dt" id="variantesTable" style="max-width:640px;">
+        <thead>
+          <tr><th>Concepto</th><th>Vol/mes (kg)</th><th>Revenue/mes (USD)</th></tr>
+        </thead>
+        <tbody id="variantesBody"></tbody>
+      </table>
+    </section>
+
+    <section class="block">
+      <h2 class="section-title">Detalle por producto</h2>
+      <div class="toolbar">
+        <input type="search" id="searchBox" placeholder="Buscar producto o código…">
+        <select id="lineFilter"><option value="">Todas las líneas</option></select>
+        <select id="sortField">
+          <option value="">Orden: por línea</option>
+          <option value="ebitdaTotal_desc">EBITDA Total ↓</option>
+          <option value="ebitdaTotal_asc">EBITDA Total ↑</option>
+          <option value="revenue_desc">Revenue ↓</option>
+          <option value="ebitdaPct_asc">EBITDA % ↑ (peores primero)</option>
+          <option value="vol_desc">Volumen ↓</option>
+        </select>
+        <div class="spacer"></div>
+        <button class="btn outline" id="expandAllBtn">Expandir todo</button>
+        <button class="btn outline" id="collapseAllBtn">Colapsar todo</button>
+        <label class="btn outline" style="cursor:pointer;">
+          Importar CSV
+          <input type="file" id="csvImport" accept=".csv" style="display:none;">
+        </label>
+        <button class="btn" id="exportBtn">Exportar CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table class="dt" id="prodTable">
+          <thead>
+            <tr>
+              <th>Línea</th>
+              <th>Producto</th>
+              <th>Precio</th>
+              <th>MP+Rend</th>
+              <th>MOD</th>
+              <th>Imp</th>
+              <th>Flete</th>
+              <th>CMG</th>
+              <th>CMG%</th>
+              <th>GF</th>
+              <th>EBITDA/kg</th>
+              <th>EBITDA%</th>
+              <th>Vol (kg/mes)</th>
+              <th>Revenue/mes</th>
+              <th>EBITDA Tot./mes</th>
+              <th>CF Inv</th>
+            </tr>
+          </thead>
+          <tbody id="prodBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- EBITDA Real (ventas anuales) -->
+  <div class="panel" data-panel="ebitdareal">
+    <div class="note">
+      <b>Precio real = facturación ÷ kilos del año (jul'25–jun'26)</b>, cruzado con el costo (MP+Rend) de cada producto.
+      Como es un promedio de 12 meses, mezcla meses con costos más bajos y meses recientes con costos ya más altos
+      (ej. por la suba de insumos este año) — así que el margen "real" acá puede diferir del margen con precio/costo actuales.
+      Solo incluye <b>73 de 93 familias de producto</b> que pude identificar por nombre entre tu planilla de ventas anual
+      y el resto de los datos (quedan afuera ítems administrativos como notas de crédito, anticipos, fletes, etc. — no son productos).
+    </div>
+    <section class="block">
+      <h2 class="section-title">Resultado consolidado (productos matcheados)</h2>
+      <div class="kpis" id="kpiEbitdaReal"></div>
+    </section>
+    <section class="block">
+      <h2 class="section-title">EBITDA real por producto</h2>
+      <div class="toolbar">
+        <input type="search" id="searchBoxEbitdaReal" placeholder="Buscar producto o línea…">
+        <select id="lineFilterEbitdaReal"><option value="">Todas las líneas</option></select>
+        <select id="sortFieldEbitdaReal">
+          <option value="">Orden: por línea</option>
+          <option value="ebitdaTotal_desc">EBITDA Total ↓</option>
+          <option value="ebitdaTotal_asc">EBITDA Total ↑ (peores primero)</option>
+          <option value="ebitdaPct_asc">EBITDA % ↑ (peores primero)</option>
+          <option value="revenue_desc">Revenue ↓</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table class="dt" id="ebitdaRealTable">
+          <thead>
+            <tr>
+              <th>Línea</th>
+              <th>Producto</th>
+              <th>Precio real (prom. anual)</th>
+              <th>MP+Rend</th>
+              <th>EBITDA/kg</th>
+              <th>EBITDA%</th>
+              <th>Vol/mes (kg)</th>
+              <th>Revenue/mes</th>
+              <th>EBITDA Tot./mes</th>
+            </tr>
+          </thead>
+          <tbody id="ebitdaRealBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Asignación de Gastos -->
+  <div class="panel" data-panel="gastos">
+    <div class="note">Estos parámetros definen el Gasto Fijo (GF) por kilo que se descuenta en cada producto del P&amp;L. Editalos acá y el detalle por producto se actualiza automáticamente.</div>
+    <section class="block">
+      <h2 class="section-title">Asignación de Gastos</h2>
+      <div class="readouts" id="readoutsGastos"></div>
+    </section>
+    <section class="block">
+      <h2 class="section-title">Gasto Fijo total vs. asignado</h2>
+      <div class="kpis" id="kpiGastos"></div>
+    </section>
+  </div>
+
+  <!-- Costo Inventario -->
+  <div class="panel" data-panel="inventario">
+    <div class="note">Costo financiero de mantener inventario, calculado por producto como MP+Rend × TNA% ÷ Factor de rotación, y luego prorrateado por volumen. <b>Factor de rotación real</b>: calculado con tu stock valorizado al 30/06/2026 (47.945 kg · USD 217.722) contra el costo de ventas anual estimado → rotación real de <b>5,67 veces/año</b> (≈64 días de inventario). Reemplaza el valor genérico que traía el dashboard original.</div>
+    <section class="block">
+      <h2 class="section-title">Costo Inventario</h2>
+      <div class="readouts" id="readoutsInv"></div>
+    </section>
+    <section class="block">
+      <h2 class="section-title">Impacto financiero del inventario</h2>
+      <div class="kpis" id="kpiInv"></div>
+    </section>
+    <section class="block">
+      <h2 class="section-title">Top 15 productos por costo financiero de inventario</h2>
+      <div class="table-wrap" style="max-height:420px;">
+        <table class="dt" id="invTable">
+          <thead><tr><th>Línea</th><th>Producto</th><th>MP+Rend</th><th>Vol (kg)</th><th>CF Inv (USD/kg)</th><th>CF Inv Total</th></tr></thead>
+          <tbody id="invBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Lista de Precios (vista comercial, sin costos) -->
+  <div class="panel" data-panel="precios">
+    <div class="note" id="precioNote">Vista comercial: precios sugeridos por nivel de margen. No incluye costos, MP+Rend, MOD, Flete, Imp% ni GF — solo precios de venta.</div>
+    <section class="block">
+      <h2 class="section-title">Lista de precios</h2>
+      <div class="toolbar">
+        <input type="search" id="searchBoxPrecios" placeholder="Buscar producto o código…">
+        <select id="lineFilterPrecios"><option value="">Todas las líneas</option></select>
+        <div class="spacer"></div>
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);">
+          <input type="checkbox" id="hidePEToggle"> Ocultar "Punto de Equilibrio"
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);">
+          <input type="checkbox" id="hideLowerToggle"> Vista reducida: solo desde Punto de Equilibrio
+        </label>
+        <button class="btn outline" id="expandAllBtnPrecios">Expandir todo</button>
+        <button class="btn outline" id="collapseAllBtnPrecios">Colapsar todo</button>
+        <button class="btn" id="printPreciosBtn">Imprimir / Guardar PDF</button>
+      </div>
+      <div class="table-wrap" id="preciosTableWrap">
+        <table class="dt" id="preciosTable">
+          <thead>
+            <tr>
+              <th>Línea</th>
+              <th>Producto</th>
+              <th class="lower-col">CMG +20%</th>
+              <th class="pe-col">Punto de Equilibrio</th>
+              <th>P.Eq. +20%</th>
+              <th>P.Eq. +30%</th>
+              <th>P.Eq. +40%</th>
+            </tr>
+          </thead>
+          <tbody id="preciosBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- Datos base -->
+  <div class="panel" data-panel="base">
+    <section class="block">
+      <h2 class="section-title">Datos base</h2>
+      <div class="readouts" id="readoutsBase"></div>
+    </section>
+    <section class="block">
+      <h2 class="section-title">Datos del archivo</h2>
+      <div class="note" style="margin-bottom:0;">
+        Dataset cargado: <b id="baseFileInfo">RECSA_PL_2026-06_actualizado · 143 productos</b><br><br>
+        Podés reemplazar todo el dataset importando un nuevo CSV (columnas: Línea, Producto, Precio, MP_Rend, Vol — o el formato original del dashboard de RECSA), o exportar el estado actual con todos tus ajustes.
+      </div>
+      <div class="toolbar" style="margin-top:14px;">
+        <label class="btn outline" style="cursor:pointer;">
+          Importar CSV (reemplaza dataset)
+          <input type="file" id="csvImportBase" accept=".csv" style="display:none;">
+        </label>
+        <button class="btn" id="exportBtnBase">Exportar CSV actual</button>
+        <div class="spacer"></div>
+        <button class="btn outline" id="resetBtn">Restaurar valores originales</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Notas / Metodología -->
+  <div class="panel" data-panel="notas">
+    <div class="note">Este panel documenta de dónde sale cada dato y qué criterio se usó en cada decisión, para que cualquiera pueda auditar los números sin tener que preguntar.</div>
+
+    <section class="block">
+      <h2 class="section-title">Parámetros generales (pestaña P&L / Gastos)</h2>
+      <table class="dt" style="max-width:100%;">
+        <thead><tr><th>Parámetro</th><th>Valor</th><th>Fuente</th></tr></thead>
+        <tbody>
+          <tr><td>TC (tipo de cambio)</td><td>ARS 1495/USD</td><td>Confirmado manualmente por el usuario</td></tr>
+          <tr><td>Flete</td><td>USD 0.20/kg</td><td>Valor original del dashboard base, confirmado sin cambios</td></tr>
+          <tr><td>Imp %</td><td>6.23%</td><td>Impuesto RECSA anual (master_gastos_financieros) ÷ Facturación anual real (ventas_kg_y_usd), convertido a TC 1495</td></tr>
+          <tr><td>GF (Gasto Fijo)</td><td>USD 1.6637/kg</td><td>(Total Fijo + Logística + Back Office) RECSA de master_de_gastos, fila "Total" ÷ TC 1495 ÷ Volumen mensual real</td></tr>
+          <tr><td>Back Office</td><td>USD 0.2123/kg</td><td>Columna "Back Office Asignado a RECSA" de master_de_gastos (subcomponente informativo del GF, ya incluido en él)</td></tr>
+          <tr><td>MOD (CDir)</td><td>USD 0.4961/kg</td><td>Columna "CDir RECSA" de master_de_gastos ÷ TC 1495 ÷ Volumen mensual real</td></tr>
+          <tr><td>TNA</td><td>35%</td><td>Valor original del dashboard base, confirmado sin cambios por el usuario</td></tr>
+          <tr><td>Factor de rotación</td><td>5.67</td><td>Calculado real: Costo de ventas anual estimado ÷ Valor de stock (STOCK_VALORIZADO_300626: 47.945 kg · USD 217.722). Reemplaza el "37" genérico original.</td></tr>
+          <tr><td>Financiero RECSA</td><td>USD 6.408/mes</td><td>master_gastos_financieros, columna "Financiero RECSA" (intereses de préstamos) ÷ TC 1495. <b>Solo informativo — no se resta del EBITDA</b>, porque EBITDA es "antes de intereses" por definición.</td></tr>
+          <tr><td>Volumen y Revenue totales (mensual)</td><td>25.253 kg · USD 121.065</td><td>Planilla ventas_kg_y_usd_julio25_a_jun26, columnas "amarillas" cant total + importe total (jul'25–jun'26), mensualizado ÷12</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="block">
+      <h2 class="section-title">Fórmulas — Detalle por producto (P&L)</h2>
+      <table class="dt" style="max-width:100%;">
+        <thead><tr><th>Cálculo</th><th>Fórmula</th></tr></thead>
+        <tbody>
+          <tr><td>Imp (por producto)</td><td>Precio × Imp%</td></tr>
+          <tr><td>CMG (Contribución Marginal)</td><td>Precio − MP+Rend − MOD − Imp − Flete</td></tr>
+          <tr><td>EBITDA/kg</td><td>CMG − GF</td></tr>
+          <tr><td>CF Inv (Costo Financiero Inventario)</td><td>MP+Rend × TNA% ÷ Factor de rotación</td></tr>
+          <tr><td>Productos con EBITDA negativo</td><td>Cuenta solo productos con <b>Precio &gt; 0</b> — excluye los marcados ⚠️ (sin venta ese mes), para no inflar el conteo con casos de precio=0</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="block">
+      <h2 class="section-title">Lista de Precios (vista comercial)</h2>
+      <div class="note" style="margin-bottom:0;">
+        No muestra costos, MP+Rend, MOD, Flete, Imp% ni GF — solo precios de venta sugeridos, para uso de vendedores.<br><br>
+        <b>CMG +20%</b> = Costo Variable (MP+Rend + MOD + Flete) con 20% de markup sobre el costo, resuelto para que el Imp% quede cubierto: <code>CV×1.20 ÷ (1−Imp%)</code><br>
+        <b>Punto de Equilibrio</b> = precio donde EBITDA=0 (cubre MP+Rend + MOD + Flete + GF): <code>(MP+Rend+MOD+Flete+GF) ÷ (1−Imp%)</code><br>
+        <b>P.Eq. +20/30/40%</b> = Punto de Equilibrio × 1.20 / 1.30 / 1.40
+      </div>
+    </section>
+
+    <section class="block">
+      <h2 class="section-title">EBITDA Real (Anual) — limitaciones importantes</h2>
+      <div class="note" style="margin-bottom:0;">
+        • <b>Precio real</b> = facturación anual ÷ kg anual (jul'25–jun'26), de la planilla JUL25_A_JUN26.xlsx, sumando manualmente solo las 12 columnas correctas (el archivo traía 18 meses, ene'25 a jun'26; la columna "Total" del archivo sumaba todo, no solo el período pedido).<br><br>
+        • Es un <b>promedio de 12 meses</b> — mezcla meses con costos más bajos y meses recientes con costos ya más altos (ej. por suba de insumos este año). El margen "real" acá puede diferir del margen con precio/costo actuales.<br><br>
+        • Es matching <b>por nombre de producto</b>, no por SKU/presentación — a diferencia de la tabla principal de P&L. Por eso son 71 "familias" de producto en vez de 143 SKUs.<br><br>
+        • Solo incluye <b>71 de 93 nombres</b> de esa planilla — quedan afuera ítems administrativos (notas de crédito, anticipos, diferencia de cambio, fletes, etc.) que no son productos, y 2 productos con volumen=0 en el período (sin ventas).<br><br>
+        • Costo (MP+Rend) = promedio ponderado por volumen de todos los SKUs de esa familia de producto.
+      </div>
+    </section>
+
+    <section class="block">
+      <h2 class="section-title">Otras aclaraciones</h2>
+      <div class="note" style="margin-bottom:0;">
+        • <b>Volumen y Revenue "totales"</b> en Resultado Consolidado son <b>mensuales</b>, no anuales — vienen de mensualizar (÷12) datos anuales reales.<br><br>
+        • El <b>Revenue del detalle por producto</b> mezcla dos fuentes de período distintas: Precio de junio 2026 (VMS_Precio_Promedio) × Volumen promedio de jun'25-may'26 (RECSA_STOCK_VENTA) — es una proyección, no facturación real de un mes puntual.<br><br>
+        • <b>MP+Rend</b> de cada producto sale de VMS_RECSA_LISTA_COSTOS_MP_Y_ENVASE, cruzado por código + presentación (atributo).<br><br>
+        • Este archivo tiene protección con clave simple (JS del lado del cliente) — es un filtro básico, no seguridad real; cualquiera con conocimientos técnicos puede ver la clave en el código fuente.
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<footer class="foot">RECSA · Control P&amp;L — versión propia construida a partir del dashboard original. Todos los cálculos corren en tu navegador.</footer>
+
+<script>
+/* ===================== DATA ===================== */
+const ORIGINAL_PRODUCTS = [{"linea": "CATALIZADOR", "producto": "2330003 - Catalizador 3320 - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 6.0056, "vol": 2.67}, {"linea": "CATALIZADOR", "producto": "2330003 - Catalizador 3320 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 5.6796, "vol": 5.0}, {"linea": "CATALIZADOR", "producto": "2330004 - Catalizador UVG 15 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 5.5511, "vol": 3.33}, {"linea": "CATALIZADOR", "producto": "2330005 - Catalizador AG 1030 - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 4.1318, "vol": 1.08}, {"linea": "CATALIZADOR", "producto": "2330005 - Catalizador AG 1030 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 4.1318, "vol": 0.0}, {"linea": "DESMOLDANTE", "producto": "1302035 - Desmoldante 2035 - 01 - 1 kg - Kilo", "precio": 120.0, "mp_rend": 54.5455, "vol": 8.15}, {"linea": "DILUYENTE", "producto": "1401405 - Diluyente DCM - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 1.77, "vol": 35.0}, {"linea": "DILUYENTE", "producto": "1401405 - Diluyente DCM - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 1.46, "vol": 0.0}, {"linea": "FAZON", "producto": "1000120 - QX50I - QUIMECO - 20 - 20 kg - Kilo", "precio": 0.93, "mp_rend": 0.0, "vol": 1675.0}, {"linea": "FAZON", "producto": "1000120 - QX50I - QUIMECO - fazon - Kilo", "precio": 0.0, "mp_rend": 0.18, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4001041 - RECSABOND LN 40 AV - 20 - 20 kg - Kilo", "precio": 6.57, "mp_rend": 3.6501, "vol": 3.33}, {"linea": "RECSABOND", "producto": "4001041 - RECSABOND LN 40 AV - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 3.6081, "vol": 16.67}, {"linea": "RECSABOND", "producto": "4100001 - RECSABOND Primer - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.669, "vol": 0.33}, {"linea": "RECSABOND", "producto": "4100001 - RECSABOND Primer - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.473, "vol": 3.33}, {"linea": "RECSABOND", "producto": "4100001 - RECSABOND Primer - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 3.431, "vol": 240.0}, {"linea": "RECSABOND", "producto": "4100010 - Recsabond AG 10 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.89, "vol": 13.33}, {"linea": "RECSABOND", "producto": "4100010 - Recsabond AG 10 - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 3.8481, "vol": 266.67}, {"linea": "RECSABOND", "producto": "4100030 - Recsabond AG 30 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.6183, "vol": 0.33}, {"linea": "RECSABOND", "producto": "4100030 - Recsabond AG 30 - 20 - 20 kg - Kilo", "precio": 7.49, "mp_rend": 3.4223, "vol": 3.33}, {"linea": "RECSABOND", "producto": "4100030 - Recsabond AG 30 - 22 - 200 kg - Kilo", "precio": 6.14, "mp_rend": 3.3803, "vol": 1083.33}, {"linea": "RECSABOND", "producto": "4100050 - RECSABOND AG 50 - 00 - 1000 kg - Kilo", "precio": 0.0, "mp_rend": 3.671, "vol": 916.67}, {"linea": "RECSABOND", "producto": "4100050 - RECSABOND AG 50 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.9434, "vol": 0.33}, {"linea": "RECSABOND", "producto": "4100050 - RECSABOND AG 50 - 20 - 20 kg - Kilo", "precio": 6.9, "mp_rend": 3.7129, "vol": 80.0}, {"linea": "RECSABOND", "producto": "4100050 - RECSABOND AG 50 - 22 - 200 kg - Kilo", "precio": 6.58, "mp_rend": 3.671, "vol": 9462.17}, {"linea": "RECSABOND", "producto": "4100055 - RECSABOND HP - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.9957, "vol": 1.33}, {"linea": "RECSABOND", "producto": "4100055 - RECSABOND HP - 20 - 20 kg - Kilo", "precio": 9.48, "mp_rend": 3.7997, "vol": 103.33}, {"linea": "RECSABOND", "producto": "4100055 - RECSABOND HP - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 3.7577, "vol": 402.08}, {"linea": "RECSABOND", "producto": "4100055 - RECSABOND HP - 26 - 225 kg - Kilo", "precio": 0.0, "mp_rend": 3.7431, "vol": 37.5}, {"linea": "RECSABOND", "producto": "4311300 - RECSABOND UVG 300 A - 20 - 20 kg - Kilo", "precio": 15.38, "mp_rend": 4.5674, "vol": 133.33}, {"linea": "RECSABOND", "producto": "4321300 - RECSABOND UVG 300 B - 20 - 20 kg - Kilo", "precio": 15.38, "mp_rend": 4.5674, "vol": 106.67}, {"linea": "RECSABOND", "producto": "4401007 - RECSABOND RF 7 - 04- 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.8659, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4401007 - RECSABOND RF 7 - 10 - 10 kg - Kilo", "precio": 5.2, "mp_rend": 3.8681, "vol": 750.0}, {"linea": "RECSABOND", "producto": "4401007 - RECSABOND RF 7 - 15 - 15 kg - Kilo", "precio": 0.0, "mp_rend": 3.8381, "vol": 83.75}, {"linea": "RECSABOND", "producto": "4401007 - RECSABOND RF 7 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.7621, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4401007 - RECSABOND RF 7 - 22-200 kg - Kilo", "precio": 0.0, "mp_rend": 3.673, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4410114 - RECSABOND SG 114 - Kilo", "precio": 0.0, "mp_rend": 3.2759, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4500495 - RECSABOND ML 495 - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 4.3551, "vol": 0.08}, {"linea": "RECSABOND", "producto": "4500495 - RECSABOND ML 495 - 20 - 20 kg - Kilo", "precio": 8.55, "mp_rend": 4.1451, "vol": 70.0}, {"linea": "RECSABOND", "producto": "4500495 - RECSABOND ML 495 - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 3.9671, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4500500 - RECSABOND ML 500 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.1781, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4500630 - RECSABOND ML 630 - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 4.5411, "vol": 0.08}, {"linea": "RECSABOND", "producto": "4500630 - RECSABOND ML 630 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 4.3911, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4500630 - RECSABOND ML 630 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.3311, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4500630 - RECSABOND ML 630 - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 4.1531, "vol": 66.67}, {"linea": "RECSABOND", "producto": "4500723 - RECSABOND ML 723 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.6066, "vol": 70.0}, {"linea": "RECSABOND", "producto": "4500723 - RECSABOND ML 723 - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 3.4287, "vol": 0.0}, {"linea": "RECSABOND", "producto": "4500810 - RECSABOND ML 810 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.9072, "vol": 31.67}, {"linea": "RECSABOND", "producto": "4500810 - RECSABOND ML 810 - 22 - 200 kg - Kilo", "precio": 6.18, "mp_rend": 3.7293, "vol": 166.67}, {"linea": "RECSACOAT", "producto": "6100051 - RECSACOAT RC 51 Comp. A - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 4.1656, "vol": 0.0}, {"linea": "RECSACOAT", "producto": "6100051 - RECSACOAT RC 51 Comp. A - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.9696, "vol": 46.67}, {"linea": "RECSACOAT", "producto": "6100069 - RECSACOAT TX - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 6.53, "vol": 33.33}, {"linea": "RECSACOAT", "producto": "6102051 - RECSACOAT RC 51 Comp. B - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 4.1667, "vol": 0.0}, {"linea": "RECSACOAT", "producto": "6102051 - RECSACOAT RC 51 Comp. B - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 4.0167, "vol": 0.0}, {"linea": "RECSACOAT", "producto": "6102051 - RECSACOAT RC 51 Comp. B - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.8207, "vol": 16.67}, {"linea": "RECSACOAT", "producto": "6102080 - RECSACOAT HPI 80 ISO - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 7.9538, "vol": 1.67}, {"linea": "RECSACOAT", "producto": "6120101 - RECSACOAT WRC  GRIS - 20 - 20 Lt - Kilo", "precio": 0.0, "mp_rend": 4.5278, "vol": 137.5}, {"linea": "RECSACOAT", "producto": "6120101 - RECSACOAT WRC GRIS - 01 - 1 lt - Kilo", "precio": 0.0, "mp_rend": 4.7798, "vol": 0.0}, {"linea": "RECSACOAT", "producto": "6120101 - RECSACOAT WRC GRIS - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.7731, "vol": 0.0}, {"linea": "RECSACOAT", "producto": "6191080 - RECSACOAT HPI 80 NARANJA RESINA - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 7.9538, "vol": 1.67}, {"linea": "RECSACROM", "producto": "8001401 - RECSACROM G AMARILLO - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.9244, "vol": 85.42}, {"linea": "RECSACROM", "producto": "8001403 - RECSACROM G VIOLETA - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.7761, "vol": 10.42}, {"linea": "RECSACROM", "producto": "8001404 - RECSACROM G GRIS - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.5804, "vol": 43.75}, {"linea": "RECSACROM", "producto": "8001406 - RECSACROM G ROJO CLARO - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.7109, "vol": 16.67}, {"linea": "RECSACROM", "producto": "8001407 - RECSACROM G AZUL - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.5535, "vol": 4.17}, {"linea": "RECSACROM", "producto": "8001408 - RECSACROM G VERDE - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.5613, "vol": 2.08}, {"linea": "RECSACROM", "producto": "8001409 - RECSACROM G NARANJA - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.6683, "vol": 2.08}, {"linea": "RECSACROM", "producto": "8001414 - RECSACROM G GRIS CLARO - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.4948, "vol": 0.0}, {"linea": "RECSACROM", "producto": "8001416 - RECSACROM G ROJO - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.7061, "vol": 2.08}, {"linea": "RECSACROM", "producto": "8001417 - RECSACROM G CELESTE - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.5899, "vol": 29.17}, {"linea": "RECSACROM", "producto": "8001418 - RECSACROM G VERDE CLARO - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.5892, "vol": 0.0}, {"linea": "RECSACROM", "producto": "8001419 - RECSACROM G NARANJA CLARO - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.6089, "vol": 6.25}, {"linea": "RECSACROM", "producto": "8001426 - RECSACROM G ROJO OXIDO - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.5882, "vol": 16.67}, {"linea": "RECSACROM", "producto": "8001428 - RECSACROM G VERDE CESPED - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.5415, "vol": 31.25}, {"linea": "RECSACROM", "producto": "8001436 - RECSACROM G ROSA - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 0.7025, "vol": 6.25}, {"linea": "RECSADIL", "producto": "1401404 - RECSADIL UVG 95 - 04 - 4 Lt - Kilo", "precio": 0.0, "mp_rend": 6.4766, "vol": 0.26}, {"linea": "RECSADIL", "producto": "1401406 - RECSADIL UVG 90 - 04 - 4 Lt - Kilo", "precio": 0.0, "mp_rend": 9.6154, "vol": 1.32}, {"linea": "RECSAFLEX", "producto": "2220106 - RETIFLEX - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 16.622, "vol": 12.67}, {"linea": "RECSAPREN", "producto": "3036010 - RECSAPREN R 360 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.9426, "vol": 11.67}, {"linea": "RECSAPREN", "producto": "3037510 - RECSAPREN R 2140 - 20 - 20 kg - Kilo", "precio": 7.76, "mp_rend": 4.9402, "vol": 55.0}, {"linea": "RECSAPREN", "producto": "3038010 - RECSAPREN R 280 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.8981, "vol": 6.67}, {"linea": "RECSAPREN", "producto": "3038060 - RECSAPREN R 8060 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 8.8598, "vol": 0.0}, {"linea": "RECSAPREN", "producto": "3038060 - RECSAPREN R 8060 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 8.7998, "vol": 8.33}, {"linea": "RECSAPREN", "producto": "3038510 - RECSAPREN R 250 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.9334, "vol": 15.0}, {"linea": "RECSAPREN", "producto": "3039010 - RECSAPREN R 172 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.7163, "vol": 70.0}, {"linea": "RECSAPREN", "producto": "3039010 - RECSAPREN R 172 - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 4.5384, "vol": 150.0}, {"linea": "RECSAPREN", "producto": "3039260 - RECSAPREN R 9260 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 8.5687, "vol": 0.0}, {"linea": "RECSAPREN", "producto": "3039260 - RECSAPREN R 9260 - 20 - 20 kg - Kilo", "precio": 14.38, "mp_rend": 8.2142, "vol": 10.0}, {"linea": "RECSAPREN", "producto": "3039510 - RECSAPREN R 178 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.7314, "vol": 226.67}, {"linea": "RECSAPREN", "producto": "3039510 - RECSAPREN R 178 - 22 - 200 kg - Kilo", "precio": 7.42, "mp_rend": 4.5534, "vol": 33.33}, {"linea": "RECSAPREN", "producto": "3039560 - RECSAPREN R 9560 - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 8.5729, "vol": 0.0}, {"linea": "RECSAPREN", "producto": "3039560 - RECSAPREN R 9560 - 20 - 20 kg - Kilo", "precio": 16.6, "mp_rend": 8.5129, "vol": 29.75}, {"linea": "RECSAPREN", "producto": "3039565 - RECSAPREN R 491 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 8.4868, "vol": 0.0}, {"linea": "RECSAPREN", "producto": "3039565 - RECSAPREN R 491 - 22 - 200 kg - Kilo", "precio": 0.0, "mp_rend": 8.3088, "vol": 0.0}, {"linea": "RECSAPREN", "producto": "3046510 - RECSAPREN R 190 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.6422, "vol": 10.0}, {"linea": "RECSAPREN", "producto": "3047560 - RECSAPREN R75D60 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 7.581, "vol": 3.33}, {"linea": "RECSAPREN", "producto": "3923000 - RECSAPREN FLEX 45 Comp B - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.2955, "vol": 0.0}, {"linea": "RECSAPREN", "producto": "3934500 - RECSAPREN FLEX 45 Comp A - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.2955, "vol": 0.0}, {"linea": "RECSAPREN", "producto": "3938546 - RECSAPREN FLEX 85 Rojo - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.2869, "vol": 110.0}, {"linea": "RECSASEAL", "producto": "5010145 - RECSASEAL EL 145 Cte A - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 4.3082, "vol": 0.29}, {"linea": "RECSASEAL", "producto": "5010145 - RECSASEAL EL 145 Cte A - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.1122, "vol": 3.33}, {"linea": "RECSASEAL", "producto": "5010145 - RECSASEAL EL 145 Cte A - 99 - sin envase kg - Kilo", "precio": 0.0, "mp_rend": 3.8197, "vol": 0.0}, {"linea": "RECSASEAL", "producto": "5014125 - RECSASEAL EL 125 Comp. A - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 4.3225, "vol": 0.67}, {"linea": "RECSASEAL", "producto": "5014125 - RECSASEAL EL 125 Comp. A - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 4.1357, "vol": 8.33}, {"linea": "RECSASEAL", "producto": "5014125 - RECSASEAL EL 125 Comp. A - 22 - 200 kg - Kilo", "precio": 8.61, "mp_rend": 4.0629, "vol": 550.0}, {"linea": "RECSASEAL", "producto": "5014220 - RECSASEAL EL 220 CTE A - 20 - 20 kg - Kilo", "precio": 5.98, "mp_rend": 2.9106, "vol": 340.0}, {"linea": "RECSASEAL", "producto": "5020125 - RECSASEAL EL 125 Comp. B - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 4.3225, "vol": 0.25}, {"linea": "RECSASEAL", "producto": "5020125 - RECSASEAL EL 125 Comp. B - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 4.1357, "vol": 0.33}, {"linea": "RECSASEAL", "producto": "5020125 - RECSASEAL EL 125 Comp. B - 20 - 20 kg - Kilo", "precio": 8.61, "mp_rend": 4.0629, "vol": 121.67}, {"linea": "RECSASEAL", "producto": "5020145 - RECSASEAL EL 145 Cte B - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 4.0763, "vol": 0.13}, {"linea": "RECSASEAL", "producto": "5020145 - RECSASEAL EL 145 Cte B - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.9263, "vol": 1.33}, {"linea": "RECSASEAL", "producto": "5020145 - RECSASEAL EL 145 Cte B - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.7303, "vol": 0.0}, {"linea": "RECSASEAL", "producto": "5020145 - RECSASEAL EL 145 Cte B - 99 - sin envase kg - Kilo", "precio": 0.0, "mp_rend": 3.8197, "vol": 0.0}, {"linea": "RECSASEAL", "producto": "5020220 - RECSASEAL EL 220 CTE B - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.8761, "vol": 0.33}, {"linea": "RECSASEAL", "producto": "5020220 - RECSASEAL EL 220 CTE B - 20 - 20 kg - Kilo", "precio": 9.92, "mp_rend": 3.6801, "vol": 35.33}, {"linea": "RECSASEAL", "producto": "5100027 - RECSASEAL S 164W - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 3.8597, "vol": 76.67}, {"linea": "RECSASEAL", "producto": "5918010   KIT RECSASEAL S 180 x 10 kg - Kilo", "precio": 0.0, "mp_rend": 4.455, "vol": 0.0}, {"linea": "RESINA ELECTRICA", "producto": "1070001 - RESINA ELECTRICA PU2638R - Componente  A - 99 - sin envase - Kilo", "precio": 6.74, "mp_rend": 3.8197, "vol": 809.1}, {"linea": "RESINA ELECTRICA", "producto": "1070002 - RESINA ELECTRICA PU2638R - Componente B - 99 - sin envase - Kilo", "precio": 6.74, "mp_rend": 3.8197, "vol": 366.28}, {"linea": "RESINA ELECTRICA", "producto": "1070003 - RESINA ELECTRICA PU2638R Bolsa 1600 ml - Unidad", "precio": 0.69, "mp_rend": 0.3, "vol": 150.92}, {"linea": "RESINA ELECTRICA", "producto": "1070004 - RESINA ELECTRICA PU2638R Bolsa 970 ml - Unidad", "precio": 0.0, "mp_rend": 0.3, "vol": 16.92}, {"linea": "RESINA ELECTRICA", "producto": "1070005 - RESINA ELECTRICA PU2638R Bolsa 1800 ml - Unidad", "precio": 0.0, "mp_rend": 0.3, "vol": 18.58}, {"linea": "RESINA ELECTRICA", "producto": "1070006 - RESINA ELECTRICA PU2638R Bolsa 1750 ml - Unidad", "precio": 0.69, "mp_rend": 0.0, "vol": 25.67}, {"linea": "RESINA ELECTRICA", "producto": "9972638 - Resina Elec.PU2638R - Unidad", "precio": 0.0, "mp_rend": 0.0, "vol": 450.33}, {"linea": "RETICULANTE", "producto": "2010201 - Reticulante CM - 10 - 10 kg - Kilo", "precio": 0.0, "mp_rend": 8.1143, "vol": 5.0}, {"linea": "RETICULANTE", "producto": "2010201 - Reticulante CM - 50 - 50 kg - Kilo", "precio": 8.94, "mp_rend": 7.0, "vol": 62.5}, {"linea": "RETICULANTE", "producto": "2010202 - Reticulante E300 - 04 - 4 kg - Kilo", "precio": 31.2, "mp_rend": 16.5465, "vol": 0.67}, {"linea": "RETICULANTE", "producto": "2010202 - Reticulante E300 - 20 - 20 kg - Kilo", "precio": 0.0, "mp_rend": 16.26, "vol": 18.33}, {"linea": "REVENTA", "producto": "1000085 - DIETANOLAMINA 85 %  - Milberg - 99 - sin envase - Kilo", "precio": 0.0, "mp_rend": 0.0, "vol": 1100.83}, {"linea": "REVENTA", "producto": "1000085 - DIETANOLAMINA 85% - Miberg - fazon - Kilo", "precio": 0.0, "mp_rend": 0.18, "vol": 0.0}, {"linea": "REVENTA", "producto": "1110100 - Pasta Pigmentada Amarilla - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 10.32, "vol": 0.33}, {"linea": "REVENTA", "producto": "1140400 - Pasta Pigmentada Negra - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 5.52, "vol": 0.0}, {"linea": "REVENTA", "producto": "1160600 - Pasta Pigmentada Roja - 01 - 1 kg - Kilo", "precio": 0.0, "mp_rend": 8.52, "vol": 0.17}, {"linea": "REVENTA", "producto": "1201200 - Plastificante D - 04 - 4 kg - Kilo", "precio": 0.0, "mp_rend": 3.0069, "vol": 1.33}, {"linea": "REVENTA", "producto": "1201200 - Plastificante D - 20 - 20 kg - Kilo", "precio": 6.68, "mp_rend": 2.774, "vol": 1.67}, {"linea": "REVENTA", "producto": "1525605 - Cinta Adh. Doble Faz (Esp: 0,5 mm - Ancho: 5 mm) - Unidad", "precio": 0.0, "mp_rend": 1.51, "vol": 6.67}, {"linea": "REVENTA", "producto": "9021002 - MDI Polimerico - 99 - Sin Envase - Kilo", "precio": 0.0, "mp_rend": 3.6, "vol": 83.33}, {"linea": "REVENTA", "producto": "9084014 - Granza de caucho  1 - 4 mm - 25 - 25 kg - Kilo", "precio": 0.0, "mp_rend": 3.25, "vol": 8.33}, {"linea": "SIN LINEA", "producto": "5918002   KIT RECSASEAL S 180 x 2.5 kg - Kilo", "precio": 0.0, "mp_rend": 4.773, "vol": 0.0}, {"linea": "SIN LINEA", "producto": "5918002   KIT RECSASEAL S 180 x 2.5 kg - Unidad", "precio": 10.42, "mp_rend": 0.0, "vol": 0.0}, {"linea": "SIN LINEA", "producto": "5918010   KIT RECSASEAL S 180 x 10 kg - Unidad", "precio": 9.11, "mp_rend": 0.0, "vol": 0.0}, {"linea": "SIN LINEA", "producto": "9000200 - Tambores por 200 Lts.  PARA RECICLAR - Unidad", "precio": 2.96, "mp_rend": 0.0, "vol": 53.33}, {"linea": "SIN LINEA", "producto": "9007022 - Balde Plastico Azul x 20 lts PAD - Unidad", "precio": 0.0, "mp_rend": 0.0, "vol": 4.33}, {"linea": "SIN LINEA", "producto": "9999996 - Trabajos para Terceros - 99 - sin envase - Kilo", "precio": 0.0, "mp_rend": 0.0, "vol": 747.92}];
+
+/* Datos de ventas jul'25-jun'26, mensualizados (÷12). Fuente: planilla ventas_kg_y_usd. */
+const ANNUAL_SALES_VARIANTS = {
+  sinB: { label: "Total sin columna 'b' (Cant. p/Estad. + Importe Neto)", kg: 22045.19, usd: 104558.42 },
+  total: { label: "Total general (incluye columna 'b')", kg: 25253.02, usd: 121065.0 }
+};
+
+/* EBITDA real por producto, calculado con precio real anual (facturación÷kg jul'25-jun'26)
+   cruzado con el costo (MP+Rend) de cada familia de producto. 73 de 93 familias matcheadas. */
+const EBITDA_REAL_DATA = [{"linea": "CATALIZADOR", "producto": "Catalizador 3320", "precio": 21.4556, "mp_rend": 5.7931, "ebitda": 11.8581, "ebitdaPct": 55.27, "vol": 6.0, "revenue": 128.73, "ebitdaTotal": 71.15}, {"linea": "CATALIZADOR", "producto": "Catalizador AG 1030", "precio": 11.14, "mp_rend": 4.1318, "ebitda": 3.8661, "ebitdaPct": 34.7, "vol": 1.08, "revenue": 12.07, "ebitdaTotal": 4.19}, {"linea": "CATALIZADOR", "producto": "Catalizador UVG 15", "precio": 20.9044, "mp_rend": 5.5511, "ebitda": 11.5844, "ebitdaPct": 55.42, "vol": 3.0, "revenue": 62.71, "ebitdaTotal": 34.75}, {"linea": "REVENTA", "producto": "DIETANOLAMINA 85 %  - Milberg", "precio": 0.2, "mp_rend": 0.0, "ebitda": -2.2397, "ebitdaPct": -1119.87, "vol": 1100.83, "revenue": 220.17, "ebitdaTotal": -2465.58}, {"linea": "DESMOLDANTE", "producto": "Desmoldante 2035", "precio": 120.9375, "mp_rend": 54.5455, "ebitda": 56.2009, "ebitdaPct": 46.47, "vol": 8.0, "revenue": 967.5, "ebitdaTotal": 449.61}, {"linea": "DILUYENTE", "producto": "Diluyente DCM", "precio": 5.5237, "mp_rend": 1.77, "ebitda": 0.9722, "ebitdaPct": 17.6, "vol": 31.67, "revenue": 174.92, "ebitdaTotal": 30.79}, {"linea": "REVENTA", "producto": "Granza de caucho  1 - 4 mm", "precio": 0.6529, "mp_rend": 3.25, "ebitda": -5.0659, "ebitdaPct": -775.91, "vol": 8.33, "revenue": 5.44, "ebitdaTotal": -42.22}, {"linea": "REVENTA", "producto": "MDI Polimerico", "precio": 4.28, "mp_rend": 3.6, "ebitda": -2.0217, "ebitdaPct": -47.24, "vol": 41.67, "revenue": 178.33, "ebitdaTotal": -84.24}, {"linea": "REVENTA", "producto": "Pasta Pigmentada Amarilla", "precio": 26.7, "mp_rend": 10.32, "ebitda": 12.239, "ebitdaPct": 45.84, "vol": 0.33, "revenue": 8.9, "ebitdaTotal": 4.08}, {"linea": "REVENTA", "producto": "Pasta Pigmentada Roja", "precio": 25.0, "mp_rend": 8.52, "ebitda": 12.4481, "ebitdaPct": 49.79, "vol": 0.17, "revenue": 4.17, "ebitdaTotal": 2.07}, {"linea": "REVENTA", "producto": "Plastificante D", "precio": 5.8121, "mp_rend": 2.8773, "ebitda": 0.1349, "ebitdaPct": 2.32, "vol": 4.67, "revenue": 27.12, "ebitdaTotal": 0.63}, {"linea": "FAZON", "producto": "QX50I - QUIMECO", "precio": 0.8792, "mp_rend": 0.0, "ebitda": -1.6042, "ebitdaPct": -182.47, "vol": 1771.67, "revenue": 1557.58, "ebitdaTotal": -2842.07}, {"linea": "RECSABOND", "producto": "RECSABOND AG 50", "precio": 4.9513, "mp_rend": 3.6713, "ebitda": -1.4648, "ebitdaPct": -29.58, "vol": 9755.92, "revenue": 48304.38, "ebitdaTotal": -14290.68}, {"linea": "RECSABOND", "producto": "RECSABOND HP", "precio": 8.4154, "mp_rend": 3.7652, "ebitda": 1.683, "ebitdaPct": 20.0, "vol": 557.58, "revenue": 4692.29, "ebitdaTotal": 938.41}, {"linea": "RECSABOND", "producto": "RECSABOND LN 40 AV", "precio": 7.022, "mp_rend": 3.6151, "ebitda": 0.5292, "ebitdaPct": 7.54, "vol": 8.33, "revenue": 58.52, "ebitdaTotal": 4.41}, {"linea": "RECSABOND", "producto": "RECSABOND ML 495", "precio": 7.0216, "mp_rend": 4.1453, "ebitda": -0.0014, "ebitdaPct": -0.02, "vol": 73.33, "revenue": 514.92, "ebitdaTotal": -0.11}, {"linea": "RECSABOND", "producto": "RECSABOND ML 630", "precio": 5.1, "mp_rend": 4.1536, "ebitda": -1.8079, "ebitdaPct": -35.45, "vol": 50.0, "revenue": 255.0, "ebitdaTotal": -90.39}, {"linea": "RECSABOND", "producto": "RECSABOND ML 723", "precio": 5.0338, "mp_rend": 3.6066, "ebitda": -1.3229, "ebitdaPct": -26.28, "vol": 70.0, "revenue": 352.37, "ebitdaTotal": -92.6}, {"linea": "RECSABOND", "producto": "RECSABOND ML 810", "precio": 4.5914, "mp_rend": 3.7577, "ebitda": -1.8879, "ebitdaPct": -41.12, "vol": 175.0, "revenue": 803.5, "ebitdaTotal": -330.39}, {"linea": "RECSABOND", "producto": "RECSABOND Primer", "precio": 5.9653, "mp_rend": 3.4319, "ebitda": -0.2764, "ebitdaPct": -4.63, "vol": 167.0, "revenue": 996.21, "ebitdaTotal": -46.17}, {"linea": "RECSABOND", "producto": "RECSABOND RF 7", "precio": 5.0246, "mp_rend": 3.8651, "ebitda": -1.5899, "ebitdaPct": -31.64, "vol": 750.42, "revenue": 3770.57, "ebitdaTotal": -1193.12}, {"linea": "RECSABOND", "producto": "RECSABOND UVG 300 A", "precio": 14.839, "mp_rend": 4.5674, "ebitda": 6.8921, "ebitdaPct": 46.45, "vol": 140.0, "revenue": 2077.47, "ebitdaTotal": 964.89}, {"linea": "RECSABOND", "producto": "RECSABOND UVG 300 B", "precio": 14.839, "mp_rend": 4.5674, "ebitda": 6.8921, "ebitdaPct": 46.45, "vol": 112.0, "revenue": 1661.97, "ebitdaTotal": 771.91}, {"linea": "RECSACOAT", "producto": "RECSACOAT HPI 80 ISO", "precio": 14.7, "mp_rend": 7.9538, "ebitda": 3.3756, "ebitdaPct": 22.96, "vol": 1.67, "revenue": 24.5, "ebitdaTotal": 5.63}, {"linea": "RECSACOAT", "producto": "RECSACOAT HPI 80 NARANJA RESINA", "precio": 14.7, "mp_rend": 7.9538, "ebitda": 3.3756, "ebitdaPct": 22.96, "vol": 1.67, "revenue": 24.5, "ebitdaTotal": 5.63}, {"linea": "RECSACOAT", "producto": "RECSACOAT RC 51 Comp. A", "precio": 7.6475, "mp_rend": 3.9696, "ebitda": 0.76, "ebitdaPct": 9.94, "vol": 46.67, "revenue": 356.88, "ebitdaTotal": 35.47}, {"linea": "RECSACOAT", "producto": "RECSACOAT RC 51 Comp. B", "precio": 8.2692, "mp_rend": 3.8207, "ebitda": 1.4908, "ebitdaPct": 18.03, "vol": 16.67, "revenue": 137.82, "ebitdaTotal": 24.85}, {"linea": "RECSACOAT", "producto": "RECSACOAT TX", "precio": 9.89, "mp_rend": 6.53, "ebitda": 0.2982, "ebitdaPct": 3.01, "vol": 28.33, "revenue": 280.22, "ebitdaTotal": 8.45}, {"linea": "RECSACOAT", "producto": "RECSACOAT WRC  GRIS", "precio": 7.9323, "mp_rend": 4.5278, "ebitda": 0.4683, "ebitdaPct": 5.9, "vol": 125.0, "revenue": 991.54, "ebitdaTotal": 58.54}, {"linea": "RECSACROM", "producto": "RECSACROM G AMARILLO", "precio": 2.0344, "mp_rend": 0.9244, "ebitda": -1.4475, "ebitdaPct": -71.15, "vol": 85.42, "revenue": 173.77, "ebitdaTotal": -123.64}, {"linea": "RECSACROM", "producto": "RECSACROM G AZUL", "precio": 1.295, "mp_rend": 0.5535, "ebitda": -1.7685, "ebitdaPct": -136.57, "vol": 4.17, "revenue": 5.4, "ebitdaTotal": -7.37}, {"linea": "RECSACROM", "producto": "RECSACROM G CELESTE", "precio": 1.3486, "mp_rend": 0.5899, "ebitda": -1.7548, "ebitdaPct": -130.12, "vol": 29.17, "revenue": 39.33, "ebitdaTotal": -51.18}, {"linea": "RECSACROM", "producto": "RECSACROM G GRIS", "precio": 1.3162, "mp_rend": 0.5804, "ebitda": -1.7756, "ebitdaPct": -134.91, "vol": 43.75, "revenue": 57.58, "ebitdaTotal": -77.68}, {"linea": "RECSACROM", "producto": "RECSACROM G NARANJA", "precio": 1.63, "mp_rend": 0.6683, "ebitda": -1.5698, "ebitdaPct": -96.31, "vol": 2.08, "revenue": 3.4, "ebitdaTotal": -3.27}, {"linea": "RECSACROM", "producto": "RECSACROM G NARANJA CLARO", "precio": 1.37, "mp_rend": 0.6089, "ebitda": -1.7538, "ebitdaPct": -128.01, "vol": 6.25, "revenue": 8.56, "ebitdaTotal": -10.96}, {"linea": "RECSACROM", "producto": "RECSACROM G ROJO", "precio": 1.68, "mp_rend": 0.7061, "ebitda": -1.5609, "ebitdaPct": -92.91, "vol": 2.08, "revenue": 3.5, "ebitdaTotal": -3.25}, {"linea": "RECSACROM", "producto": "RECSACROM G ROJO CLARO", "precio": 1.57, "mp_rend": 0.7109, "ebitda": -1.6686, "ebitdaPct": -106.28, "vol": 16.67, "revenue": 26.17, "ebitdaTotal": -27.81}, {"linea": "RECSACROM", "producto": "RECSACROM G ROJO OXIDO", "precio": 1.29, "mp_rend": 0.5882, "ebitda": -1.8079, "ebitdaPct": -140.15, "vol": 16.67, "revenue": 21.5, "ebitdaTotal": -30.13}, {"linea": "RECSACROM", "producto": "RECSACROM G ROSA", "precio": 1.5767, "mp_rend": 0.7025, "ebitda": -1.654, "ebitdaPct": -104.9, "vol": 6.25, "revenue": 9.85, "ebitdaTotal": -10.34}, {"linea": "RECSACROM", "producto": "RECSACROM G VERDE", "precio": 1.38, "mp_rend": 0.5613, "ebitda": -1.6968, "ebitdaPct": -122.96, "vol": 2.08, "revenue": 2.88, "ebitdaTotal": -3.53}, {"linea": "RECSACROM", "producto": "RECSACROM G VERDE CESPED", "precio": 1.38, "mp_rend": 0.5415, "ebitda": -1.677, "ebitdaPct": -121.52, "vol": 31.25, "revenue": 43.12, "ebitdaTotal": -52.41}, {"linea": "RECSACROM", "producto": "RECSACROM G VIOLETA", "precio": 1.698, "mp_rend": 0.7761, "ebitda": -1.614, "ebitdaPct": -95.05, "vol": 10.42, "revenue": 17.69, "ebitdaTotal": -16.81}, {"linea": "RECSADIL", "producto": "RECSADIL UVG 90", "precio": 23.3725, "mp_rend": 9.6154, "ebitda": 9.8297, "ebitdaPct": 42.06, "vol": 1.33, "revenue": 31.16, "ebitdaTotal": 13.11}, {"linea": "RECSADIL", "producto": "RECSADIL UVG 95", "precio": 16.68, "mp_rend": 6.4766, "ebitda": 6.7056, "ebitdaPct": 40.2, "vol": 0.33, "revenue": 5.56, "ebitdaTotal": 2.24}, {"linea": "RECSAPREN", "producto": "RECSAPREN FLEX 85 Rojo", "precio": 10.333, "mp_rend": 4.2869, "ebitda": 2.9558, "ebitdaPct": 28.61, "vol": 95.0, "revenue": 981.63, "ebitdaTotal": 280.8}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 172", "precio": 6.2344, "mp_rend": 4.595, "ebitda": -1.1878, "ebitdaPct": -19.05, "vol": 195.0, "revenue": 1215.7, "ebitdaTotal": -231.62}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 178", "precio": 6.6431, "mp_rend": 4.7086, "ebitda": -0.9189, "ebitdaPct": -13.83, "vol": 286.67, "revenue": 1904.35, "ebitdaTotal": -263.41}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 190", "precio": 7.595, "mp_rend": 4.6422, "ebitda": 0.0383, "ebitdaPct": 0.5, "vol": 10.0, "revenue": 75.95, "ebitdaTotal": 0.38}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 2140", "precio": 7.0372, "mp_rend": 4.9402, "ebitda": -0.7817, "ebitdaPct": -11.11, "vol": 62.0, "revenue": 436.3, "ebitdaTotal": -48.47}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 250", "precio": 7.2667, "mp_rend": 4.9334, "ebitda": -0.5602, "ebitdaPct": -7.71, "vol": 15.0, "revenue": 109.0, "ebitdaTotal": -8.4}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 280", "precio": 6.87, "mp_rend": 4.8981, "ebitda": -0.8961, "ebitdaPct": -13.04, "vol": 6.67, "revenue": 45.8, "ebitdaTotal": -5.97}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 360", "precio": 6.9153, "mp_rend": 4.9426, "ebitda": -0.8982, "ebitdaPct": -12.99, "vol": 11.67, "revenue": 80.68, "ebitdaTotal": -10.48}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 8060", "precio": 15.2424, "mp_rend": 8.7998, "ebitda": 3.0371, "ebitdaPct": 19.93, "vol": 8.33, "revenue": 127.02, "ebitdaTotal": 25.31}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 9260", "precio": 14.7493, "mp_rend": 8.2142, "ebitda": 3.1613, "ebitdaPct": 21.43, "vol": 16.67, "revenue": 245.82, "ebitdaTotal": 52.69}, {"linea": "RECSAPREN", "producto": "RECSAPREN R 9560", "precio": 16.6594, "mp_rend": 8.5129, "ebitda": 4.65, "ebitdaPct": 27.91, "vol": 34.75, "revenue": 578.91, "ebitdaTotal": 161.59}, {"linea": "RECSAPREN", "producto": "RECSAPREN R75D60", "precio": 13.46, "mp_rend": 7.581, "ebitda": 2.588, "ebitdaPct": 19.23, "vol": 3.33, "revenue": 44.87, "ebitdaTotal": 8.63}, {"linea": "RECSASEAL", "producto": "RECSASEAL EL 125 Comp. A", "precio": 7.9126, "mp_rend": 4.0643, "ebitda": 0.9134, "ebitdaPct": 11.54, "vol": 542.33, "revenue": 4291.24, "ebitdaTotal": 495.35}, {"linea": "RECSASEAL", "producto": "RECSASEAL EL 125 Comp. B", "precio": 7.9586, "mp_rend": 4.0636, "ebitda": 0.9572, "ebitdaPct": 12.03, "vol": 122.25, "revenue": 972.94, "ebitdaTotal": 117.01}, {"linea": "RECSASEAL", "producto": "RECSASEAL EL 145 Cte A", "precio": 14.6051, "mp_rend": 4.1279, "ebitda": 7.1126, "ebitdaPct": 48.7, "vol": 3.62, "revenue": 52.88, "ebitdaTotal": 25.75}, {"linea": "RECSASEAL", "producto": "RECSASEAL EL 145 Cte B", "precio": 12.7647, "mp_rend": 3.9397, "ebitda": 5.5786, "ebitdaPct": 43.7, "vol": 1.46, "revenue": 18.67, "ebitdaTotal": 8.16}, {"linea": "RECSASEAL", "producto": "RECSASEAL EL 220 CTE A", "precio": 5.1315, "mp_rend": 2.9106, "ebitda": -0.5355, "ebitdaPct": -10.44, "vol": 340.0, "revenue": 1744.7, "ebitdaTotal": -182.06}, {"linea": "RECSASEAL", "producto": "RECSASEAL EL 220 CTE B", "precio": 9.5679, "mp_rend": 3.6819, "ebitda": 2.8448, "ebitdaPct": 29.73, "vol": 35.67, "revenue": 341.25, "ebitdaTotal": 101.46}, {"linea": "RECSASEAL", "producto": "RECSASEAL S 164W", "precio": 15.2222, "mp_rend": 3.8597, "ebitda": 7.9584, "ebitdaPct": 52.28, "vol": 60.0, "revenue": 913.33, "ebitdaTotal": 477.5}, {"linea": "RESINA ELECTRICA", "producto": "RESINA ELECTRICA PU2638R - Componente  A", "precio": 6.5822, "mp_rend": 3.8197, "ebitda": -0.087, "ebitdaPct": -1.32, "vol": 901.68, "revenue": 5935.02, "ebitdaTotal": -78.42}, {"linea": "RESINA ELECTRICA", "producto": "RESINA ELECTRICA PU2638R - Componente B", "precio": 6.5872, "mp_rend": 3.8197, "ebitda": -0.0823, "ebitdaPct": -1.25, "vol": 407.93, "revenue": 2687.14, "ebitdaTotal": -33.56}, {"linea": "RECSAFLEX", "producto": "RETIFLEX", "precio": 37.0785, "mp_rend": 16.622, "ebitda": 15.6491, "ebitdaPct": 42.21, "vol": 11.0, "revenue": 407.86, "ebitdaTotal": 172.14}, {"linea": "RECSABOND", "producto": "Recsabond AG 10", "precio": 4.9278, "mp_rend": 3.8501, "ebitda": -1.6656, "ebitdaPct": -33.8, "vol": 276.67, "revenue": 1363.35, "ebitdaTotal": -460.81}, {"linea": "RECSABOND", "producto": "Recsabond AG 30", "precio": 4.3247, "mp_rend": 3.3805, "ebitda": -1.7603, "ebitdaPct": -40.7, "vol": 958.67, "revenue": 4145.95, "ebitdaTotal": -1687.58}, {"linea": "RETICULANTE", "producto": "Reticulante CM", "precio": 10.069, "mp_rend": 7.0825, "ebitda": -0.0869, "ebitdaPct": -0.86, "vol": 80.0, "revenue": 805.52, "ebitdaTotal": -6.95}, {"linea": "RETICULANTE", "producto": "Reticulante E300", "precio": 22.3636, "mp_rend": 16.2701, "ebitda": 2.2308, "ebitdaPct": 9.98, "vol": 17.33, "revenue": 387.63, "ebitdaTotal": 38.67}, {"linea": "SIN LINEA", "producto": "Trabajos para Terceros", "precio": 0.1471, "mp_rend": 0.0, "ebitda": -2.2893, "ebitdaPct": -1556.53, "vol": 747.92, "revenue": 110.0, "ebitdaTotal": -1712.18}];
+
+const ORIGINAL_GLOBALS = {
+  tc: 1495,
+  volMensual: 25253,
+  flete: 0.20,
+  impPct: 6.23,
+  tna: 35,
+  gf: 1.6637,
+  backOffice: 0.2123,
+  mod: 0.4961,
+  cfFactor: 5.67,
+  financieroMensualUSD: 6407.58
+};
+
+let globals = {...ORIGINAL_GLOBALS};
+let products = ORIGINAL_PRODUCTS.map((p,i) => ({...p, id:i}));
+let collapsedGroups = new Set();
+let currentSort = "";
+let currentSearch = "";
+let currentLineFilter = "";
+
+/* ===================== FORMULAS ===================== */
+function computeRow(p){
+  const imp = p.precio * (globals.impPct/100);
+  let cmg=null, cmgPct=null, ebitda=null, ebitdaPct=null;
+  if(p.precio > 0){
+    cmg = p.precio - p.mp_rend - globals.mod - imp - globals.flete;
+    cmgPct = (cmg/p.precio)*100;
+    ebitda = cmg - globals.gf;
+    ebitdaPct = (ebitda/p.precio)*100;
+  }
+  const revenue = p.precio * p.vol;
+  const ebitdaTotal = (ebitda!==null) ? ebitda * p.vol : 0;
+  const cfInvPerKg = p.mp_rend * (globals.tna/100) / globals.cfFactor;
+  const cfInvTotal = cfInvPerKg * p.vol;
+  return {imp, cmg, cmgPct, ebitda, ebitdaPct, revenue, ebitdaTotal, cfInvPerKg, cfInvTotal};
+}
+
+function fmt(n, dec=2){
+  if(n===null || n===undefined || isNaN(n)) return "—";
+  return n.toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+}
+function fmtInt(n){
+  if(n===null || n===undefined || isNaN(n)) return "—";
+  return Math.round(n).toLocaleString('en-US');
+}
+function fmtPct(n, dec=1){
+  if(n===null || n===undefined || isNaN(n)) return "—";
+  return n.toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec}) + "%";
+}
+
+/* ===================== TABS ===================== */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelector(`.panel[data-panel="${btn.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+/* ===================== READOUTS ===================== */
+function readoutHTML(key, label, src, dec=2, locked=false){
+  return `<div class="readout ${locked?'locked':''}">
+    <span class="lbl">${label}</span>
+    <input type="number" step="any" data-gkey="${key}" value="${globals[key]}" ${locked?'readonly':''}>
+    <div class="src">${src}</div>
+  </div>`;
+}
+
+function renderReadouts(){
+  document.getElementById('readoutsPL').innerHTML =
+    readoutHTML('tc','TC USD/ARS','← Datos base') +
+    readoutHTML('flete','Flete USD/kg','← Datos base') +
+    readoutHTML('impPct','Imp %','← Datos base') +
+    readoutHTML('gf','GF USD/kg','← Asig. Gastos') +
+    readoutHTML('mod','MOD (CDir)','← Asig. Gastos') +
+    readoutHTML('tna','TNA %','← Costo Inventario');
+
+  document.getElementById('readoutsGastos').innerHTML =
+    readoutHTML('gf','GF USD/kg','Gasto fijo asignado por kilo') +
+    readoutHTML('backOffice','Back Office','Componente informativo del GF') +
+    readoutHTML('mod','pMOD (CDir)','Mano de obra directa por kilo');
+
+  document.getElementById('readoutsInv').innerHTML =
+    readoutHTML('tna','TNA %','Tasa nominal anual') +
+    readoutHTML('cfFactor','Factor rotación','CF Inv = MP+Rend × TNA% ÷ Factor');
+
+  document.getElementById('readoutsBase').innerHTML =
+    readoutHTML('tc','TC USD/ARS','Tipo de cambio') +
+    readoutHTML('volMensual','Vol Mensual kg','Objetivo / referencia mensual') +
+    readoutHTML('flete','Flete USD/kg','Master Técnico') +
+    readoutHTML('impPct','Imp %','Master Técnico');
+
+  document.querySelectorAll('input[data-gkey]').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const key = e.target.dataset.gkey;
+      const val = parseFloat(e.target.value);
+      if(!isNaN(val)){
+        globals[key] = val;
+        renderAll();
+      }
+    });
+  });
+}
+
+/* ===================== KPIs ===================== */
+function renderKpis(){
+  const computed = products.map(p=>({p, c:computeRow(p)}));
+  const totalVol = products.reduce((s,p)=>s+p.vol,0);
+  const totalRevenue = computed.reduce((s,x)=>s+x.c.revenue,0);
+  const totalEbitda = computed.reduce((s,x)=>s+x.c.ebitdaTotal,0);
+  const ebitdaPctW = totalRevenue!==0 ? (totalEbitda/totalRevenue*100) : 0;
+  const totalCfInv = computed.reduce((s,x)=>s+x.c.cfInvTotal,0);
+  const conPrecio = products.filter(p=>p.precio>0).length;
+  const negCount = computed.filter(x=>x.p.precio>0 && x.c.ebitda!==null && x.c.ebitda<0).length;
+
+  document.getElementById('kpiStrip').innerHTML = `
+    ${kpi('Volumen total (mensual)', fmtInt(ANNUAL_SALES_VARIANTS.total.kg)+' kg', "fuente: ventas jul'25–jun'26")}
+    ${kpi('Revenue total (mensual)', 'USD '+fmtInt(ANNUAL_SALES_VARIANTS.total.usd), "fuente: ventas jul'25–jun'26")}
+    ${kpi('EBITDA total (mensual)', 'USD '+fmtInt(totalEbitda), 'según detalle por producto (stock+costos)', totalEbitda>=0)}
+    ${kpi('EBITDA / kg (promedio ponderado)', 'USD '+fmt(totalVol? totalEbitda/totalVol : 0, 3), 'según detalle por producto', totalEbitda>=0)}
+    ${kpi('EBITDA % (ponderado)', fmtPct(ebitdaPctW), 'según detalle por producto', ebitdaPctW>=0)}
+    ${kpi('Costo financiero inventario (mensual)', 'USD '+fmtInt(totalCfInv), 'según detalle por producto')}
+    ${kpi('Productos con EBITDA negativo', negCount + ' / ' + conPrecio, 'solo productos con precio cargado (excluye los ⚠️ sin venta)', negCount===0)}
+  `;
+
+  renderVariantes();
+
+  document.getElementById('kpiGastos').innerHTML = `
+    ${kpi('GF asignado por kilo', 'USD '+fmt(globals.gf,4))}
+    ${kpi('Back Office', 'USD '+fmt(globals.backOffice,4), 'componente informativo')}
+    ${kpi('MOD (CDir)', 'USD '+fmt(globals.mod,4))}
+    ${kpi('GF total estimado', 'USD '+fmtInt(globals.gf*totalVol), `sobre ${fmtInt(totalVol)} kg`)}
+    ${kpi('Financiero RECSA', 'USD '+fmt(globals.financieroMensualUSD,0)+'/mes', 'intereses préstamos · NO incluido en GF/EBITDA')}
+  `;
+
+  document.getElementById('kpiInv').innerHTML = `
+    ${kpi('TNA aplicada', fmtPct(globals.tna,1))}
+    ${kpi('Factor de rotación', fmt(globals.cfFactor,1))}
+    ${kpi('CF Inv total', 'USD '+fmtInt(totalCfInv))}
+    ${kpi('CF Inv / kg promedio', 'USD '+fmt(totalVol? totalCfInv/totalVol : 0, 4))}
+  `;
+
+  // top 15 by CF Inv total
+  const top15 = [...computed].sort((a,b)=>b.c.cfInvTotal - a.c.cfInvTotal).slice(0,15);
+  document.getElementById('invBody').innerHTML = top15.map(x=>`
+    <tr>
+      <td>${x.p.linea}</td>
+      <td>${x.p.producto}</td>
+      <td>${fmt(x.p.mp_rend,4)}</td>
+      <td>${fmtInt(x.p.vol)}</td>
+      <td>${fmt(x.c.cfInvPerKg,4)}</td>
+      <td>${fmtInt(x.c.cfInvTotal)}</td>
+    </tr>
+  `).join('');
+}
+
+function kpi(label, val, sub, isGood){
+  let cls = '';
+  if(isGood===true) cls='good';
+  if(isGood===false) cls='bad';
+  return `<div class="kpi">
+    <div class="k-lbl">${label}</div>
+    <div class="k-val ${cls}">${val}</div>
+    ${sub? `<div class="k-sub">${sub}</div>` : ''}
+  </div>`;
+}
+
+function renderVariantes(){
+  const body = document.getElementById('variantesBody');
+  if(!body) return;
+  let html = '';
+  Object.values(ANNUAL_SALES_VARIANTS).forEach(v=>{
+    html += `<tr>
+      <td>${v.label}</td>
+      <td>${fmtInt(v.kg)}</td>
+      <td>${fmtInt(v.usd)}</td>
+    </tr>`;
+  });
+  body.innerHTML = html;
+}
+
+/* ===================== PRODUCT TABLE ===================== */
+function populateLineFilter(){
+  const sel = document.getElementById('lineFilter');
+  const lines = [...new Set(products.map(p=>p.linea))].sort();
+  sel.innerHTML = '<option value="">Todas las líneas</option>' + lines.map(l=>`<option value="${l}">${l}</option>`).join('');
+  sel.value = currentLineFilter;
+}
+
+function renderTable(){
+  const body = document.getElementById('prodBody');
+  let rows = products.map(p=>({p, c:computeRow(p)}));
+
+  if(currentSearch){
+    const q = currentSearch.toLowerCase();
+    rows = rows.filter(x=> x.p.producto.toLowerCase().includes(q) || x.p.linea.toLowerCase().includes(q));
+  }
+  if(currentLineFilter){
+    rows = rows.filter(x=>x.p.linea===currentLineFilter);
+  }
+
+  let html = '';
+
+  if(currentSort){
+    const [field, dir] = currentSort.split('_');
+    rows.sort((a,b)=>{
+      let va = field==='vol' ? a.p.vol : a.c[field];
+      let vb = field==='vol' ? b.p.vol : b.c[field];
+      va = va===null? -Infinity : va; vb = vb===null? -Infinity : vb;
+      return dir==='asc' ? va-vb : vb-va;
+    });
+    html += rows.map(x=>productRowHTML(x.p, x.c)).join('');
+  } else {
+    // group by línea
+    const byLine = {};
+    rows.forEach(x=>{ (byLine[x.p.linea] = byLine[x.p.linea]||[]).push(x); });
+    Object.keys(byLine).sort().forEach(line=>{
+      const items = byLine[line];
+      const vol = items.reduce((s,x)=>s+x.p.vol,0);
+      const rev = items.reduce((s,x)=>s+x.c.revenue,0);
+      const ebt = items.reduce((s,x)=>s+x.c.ebitdaTotal,0);
+      const collapsed = collapsedGroups.has(line);
+      html += `<tr class="group-row ${collapsed?'collapsed':''}" data-line="${line}">
+        <td colspan="12"><span class="gname"><span class="chev">▾</span>${line} <span style="font-weight:400;color:var(--ink-soft);">(${items.length} prod.)</span></span></td>
+        <td>${fmtInt(vol)}</td>
+        <td>${fmtInt(rev)}</td>
+        <td class="${ebt>=0?'pos':'neg'}">${fmtInt(ebt)}</td>
+        <td></td>
+      </tr>`;
+      items.forEach(x=>{
+        html += productRowHTML(x.p, x.c, line, collapsed);
+      });
+    });
+  }
+  body.innerHTML = html;
+
+  // group toggle
+  body.querySelectorAll('.group-row').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      const line = tr.dataset.line;
+      if(collapsedGroups.has(line)) collapsedGroups.delete(line); else collapsedGroups.add(line);
+      renderTable();
+    });
+  });
+
+  // editable cells
+  body.querySelectorAll('input.cell-edit').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const id = parseInt(e.target.dataset.id);
+      const field = e.target.dataset.field;
+      const val = parseFloat(e.target.value);
+      const prod = products.find(p=>p.id===id);
+      if(prod && !isNaN(val)){
+        prod[field] = val;
+        renderTable();
+        renderKpis();
+      }
+    });
+    inp.addEventListener('click', e=>e.stopPropagation());
+  });
+}
+
+function productRowHTML(p, c, parentLine, collapsedParent){
+  const hidden = collapsedParent ? 'hidden' : '';
+  const warn = p.precio===0 ? `<span class="warn-flag" title="Sin precio cargado">⚠️ </span>` : '';
+  return `<tr class="prod-row ${hidden}" data-line="${p.linea}">
+    <td>${p.linea}</td>
+    <td>${warn}${p.producto}</td>
+    <td><input class="cell-edit" type="number" step="0.01" data-id="${p.id}" data-field="precio" value="${p.precio}"></td>
+    <td><input class="cell-edit" type="number" step="0.0001" data-id="${p.id}" data-field="mp_rend" value="${p.mp_rend}"></td>
+    <td>${fmt(globals.mod,4)}</td>
+    <td>${fmt(c.imp,4)}</td>
+    <td>${fmt(globals.flete,2)}</td>
+    <td>${fmt(c.cmg,2)}</td>
+    <td class="${c.cmgPct!==null && c.cmgPct<0 ? 'neg':''}">${fmtPct(c.cmgPct,1)}</td>
+    <td>${fmt(globals.gf,2)}</td>
+    <td class="${c.ebitda!==null && c.ebitda<0 ? 'neg':'pos'}">${fmt(c.ebitda,2)}</td>
+    <td class="${c.ebitdaPct!==null && c.ebitdaPct<0 ? 'neg':'pos'}">${fmtPct(c.ebitdaPct,1)}</td>
+    <td><input class="cell-edit" type="number" step="1" data-id="${p.id}" data-field="vol" value="${p.vol}"></td>
+    <td>${fmtInt(c.revenue)}</td>
+    <td class="${c.ebitdaTotal<0?'neg':'pos'}">${fmtInt(c.ebitdaTotal)}</td>
+    <td>${fmt(c.cfInvTotal,1)}</td>
+  </tr>`;
+}
+
+/* sortable headers */
+document.querySelectorAll('table#prodTable thead th').forEach((th,idx)=>{
+  const map = {2:'cmg',7:'cmg',10:'ebitda',11:'ebitdaPct',12:'vol',13:'revenue',14:'ebitdaTotal'};
+});
+
+/* ===================== CSV IMPORT / EXPORT ===================== */
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
+  if(lines.length<2) return [];
+  const headerLine = lines[0];
+  const headers = splitCSVLine(headerLine).map(h=>h.replace(/^\uFEFF/,'').trim());
+  const idx = {
+    linea: headers.findIndex(h=>/^l[ií]nea$/i.test(h)),
+    producto: headers.findIndex(h=>/^producto$/i.test(h)),
+    precio: headers.findIndex(h=>/^precio$/i.test(h)),
+    mp: headers.findIndex(h=>/^mp$/i.test(h)),
+    rend: headers.findIndex(h=>/^rend$/i.test(h)),
+    mp_rend: headers.findIndex(h=>/^mp_rend$/i.test(h)),
+    vol: headers.findIndex(h=>/^vol/i.test(h))
+  };
+  const out = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = splitCSVLine(lines[i]);
+    if(cols.length<2) continue;
+    const linea = idx.linea>=0 ? cols[idx.linea] : 'SIN LINEA';
+    const producto = idx.producto>=0 ? cols[idx.producto] : cols[1] || ('Producto '+i);
+    const precio = idx.precio>=0 ? parseFloat(cols[idx.precio])||0 : 0;
+    let mp_rend = 0;
+    if(idx.mp_rend>=0) mp_rend = parseFloat(cols[idx.mp_rend])||0;
+    else if(idx.mp>=0 && idx.rend>=0){
+      const mp = parseFloat(cols[idx.mp])||0;
+      const rend = parseFloat(cols[idx.rend])||1;
+      mp_rend = mp; // rend already factored in source data typically
+    }
+    const vol = idx.vol>=0 ? parseFloat(cols[idx.vol])||0 : 0;
+    out.push({linea, producto, precio, mp_rend, vol});
+  }
+  return out;
+}
+function splitCSVLine(line){
+  const result = [];
+  let cur = '', inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const ch = line[i];
+    if(ch === '"'){
+      if(inQuotes && line[i+1]==='"'){ cur+='"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if(ch === ',' && !inQuotes){
+      result.push(cur); cur='';
+    } else cur+=ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+function exportCSV(){
+  const headers = ['Línea','Producto','Precio','MP_Rend','MOD','Imp','Flete','CMG','CMG%','GF','EBITDA','EBITDA%','Vol','Revenue','EBITDA Total','CF Inv'];
+  const lines = [headers.join(',')];
+  products.forEach(p=>{
+    const c = computeRow(p);
+    lines.push([
+      `"${p.linea}"`, `"${p.producto.replace(/"/g,'""')}"`,
+      p.precio.toFixed(2), p.mp_rend.toFixed(4), globals.mod.toFixed(4),
+      c.imp.toFixed(4), globals.flete.toFixed(2),
+      c.cmg===null?'':c.cmg.toFixed(2), c.cmgPct===null?'':c.cmgPct.toFixed(1),
+      globals.gf.toFixed(2),
+      c.ebitda===null?'':c.ebitda.toFixed(2), c.ebitdaPct===null?'':c.ebitdaPct.toFixed(1),
+      p.vol, c.revenue.toFixed(0), c.ebitdaTotal.toFixed(0), c.cfInvTotal.toFixed(2)
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'RECSA_PL_editado.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function handleImport(file){
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const parsed = parseCSV(e.target.result);
+    if(parsed.length===0){ alert('No se pudo leer el CSV. Verificá las columnas (Línea, Producto, Precio, MP_Rend, Vol).'); return; }
+    products = parsed.map((p,i)=>({...p, id:i}));
+    collapsedGroups = new Set();
+    document.getElementById('prodCount').textContent = products.length;
+    document.getElementById('lineCount').textContent = new Set(products.map(p=>p.linea)).size;
+    document.getElementById('baseFileInfo').textContent = file.name + ' · ' + products.length + ' productos';
+    populateLineFilter();
+    populateLineFilterPrecios();
+    renderAll();
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+document.getElementById('csvImport').addEventListener('change', e=>{
+  if(e.target.files[0]) handleImport(e.target.files[0]);
+});
+document.getElementById('csvImportBase').addEventListener('change', e=>{
+  if(e.target.files[0]) handleImport(e.target.files[0]);
+});
+document.getElementById('exportBtn').addEventListener('click', exportCSV);
+document.getElementById('exportBtnBase').addEventListener('click', exportCSV);
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(confirm('¿Restaurar el dataset y los parámetros originales? Se perderán los cambios.')){
+    globals = {...ORIGINAL_GLOBALS};
+    products = ORIGINAL_PRODUCTS.map((p,i)=>({...p, id:i}));
+    collapsedGroups = new Set();
+    document.getElementById('prodCount').textContent = products.length;
+    document.getElementById('lineCount').textContent = new Set(products.map(p=>p.linea)).size;
+    document.getElementById('baseFileInfo').textContent = 'RECSA_PL_2026-06_actualizado · ' + products.length + ' productos';
+    populateLineFilter();
+    populateLineFilterPrecios();
+    renderAll();
+  }
+});
+
+/* ===================== SEARCH / FILTER / SORT ===================== */
+document.getElementById('searchBox').addEventListener('input', e=>{
+  currentSearch = e.target.value;
+  renderTable();
+});
+document.getElementById('lineFilter').addEventListener('change', e=>{
+  currentLineFilter = e.target.value;
+  renderTable();
+});
+document.getElementById('sortField').addEventListener('change', e=>{
+  currentSort = e.target.value;
+  renderTable();
+});
+document.getElementById('expandAllBtn').addEventListener('click', ()=>{
+  collapsedGroups.clear(); renderTable();
+});
+document.getElementById('collapseAllBtn').addEventListener('click', ()=>{
+  [...new Set(products.map(p=>p.linea))].forEach(l=>collapsedGroups.add(l));
+  renderTable();
+});
+
+/* ===================== LISTA DE PRECIOS (vista comercial, sin costos) ===================== */
+let collapsedGroupsPrecios = new Set();
+let currentSearchPrecios = "";
+let currentLineFilterPrecios = "";
+
+function computePriceRow(p){
+  if(p.mp_rend===null || p.mp_rend===undefined) return null;
+  const cv = p.mp_rend + globals.mod + globals.flete;
+  const denom = 1 - (globals.impPct/100);
+  if(denom<=0) return null;
+  const cmg15 = (cv*1.20)/denom;
+  const pe = (p.mp_rend + globals.mod + globals.flete + globals.gf)/denom;
+  return {
+    cmg15,
+    pe,
+    pe20: pe*1.20,
+    pe30: pe*1.30,
+    pe40: pe*1.40
+  };
+}
+
+function populateLineFilterPrecios(){
+  const sel = document.getElementById('lineFilterPrecios');
+  const lines = [...new Set(products.map(p=>p.linea))].sort();
+  sel.innerHTML = '<option value="">Todas las líneas</option>' + lines.map(l=>`<option value="${l}">${l}</option>`).join('');
+  sel.value = currentLineFilterPrecios;
+}
+
+function renderPreciosTable(){
+  const body = document.getElementById('preciosBody');
+  let rows = products.map(p=>({p, c:computePriceRow(p)})).filter(x=>x.c!==null);
+
+  if(currentSearchPrecios){
+    const q = currentSearchPrecios.toLowerCase();
+    rows = rows.filter(x=> x.p.producto.toLowerCase().includes(q) || x.p.linea.toLowerCase().includes(q));
+  }
+  if(currentLineFilterPrecios){
+    rows = rows.filter(x=>x.p.linea===currentLineFilterPrecios);
+  }
+
+  const byLine = {};
+  rows.forEach(x=>{ (byLine[x.p.linea] = byLine[x.p.linea]||[]).push(x); });
+
+  let html = '';
+  Object.keys(byLine).sort().forEach(line=>{
+    const items = byLine[line];
+    const collapsed = collapsedGroupsPrecios.has(line);
+    html += `<tr class="group-row ${collapsed?'collapsed':''}" data-line-p="${line}">
+      <td colspan="7"><span class="gname"><span class="chev">▾</span>${line} <span style="font-weight:400;color:var(--ink-soft);">(${items.length} prod.)</span></span></td>
+    </tr>`;
+    items.forEach(x=>{
+      const hidden = collapsed ? 'hidden' : '';
+      html += `<tr class="prod-row ${hidden}" data-line="${x.p.linea}">
+        <td>${x.p.linea}</td>
+        <td>${x.p.producto}</td>
+        <td class="lower-col">USD ${fmt(x.c.cmg15,2)}</td>
+        <td class="pe-col">USD ${fmt(x.c.pe,2)}</td>
+        <td>USD ${fmt(x.c.pe20,2)}</td>
+        <td>USD ${fmt(x.c.pe30,2)}</td>
+        <td>USD ${fmt(x.c.pe40,2)}</td>
+      </tr>`;
+    });
+  });
+  body.innerHTML = html || '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--ink-soft);">Sin productos con costo cargado para calcular precios.</td></tr>';
+
+  body.querySelectorAll('.group-row').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      const line = tr.dataset.lineP;
+      if(collapsedGroupsPrecios.has(line)) collapsedGroupsPrecios.delete(line); else collapsedGroupsPrecios.add(line);
+      renderPreciosTable();
+    });
+  });
+}
+
+document.getElementById('searchBoxPrecios').addEventListener('input', e=>{
+  currentSearchPrecios = e.target.value;
+  renderPreciosTable();
+});
+document.getElementById('lineFilterPrecios').addEventListener('change', e=>{
+  currentLineFilterPrecios = e.target.value;
+  renderPreciosTable();
+});
+document.getElementById('expandAllBtnPrecios').addEventListener('click', ()=>{
+  collapsedGroupsPrecios.clear(); renderPreciosTable();
+});
+document.getElementById('collapseAllBtnPrecios').addEventListener('click', ()=>{
+  [...new Set(products.map(p=>p.linea))].forEach(l=>collapsedGroupsPrecios.add(l));
+  renderPreciosTable();
+});
+document.getElementById('hidePEToggle').addEventListener('change', e=>{
+  document.body.classList.toggle('hide-pe', e.target.checked);
+});
+document.getElementById('hideLowerToggle').addEventListener('change', e=>{
+  document.body.classList.toggle('hide-lower', e.target.checked);
+});
+document.getElementById('printPreciosBtn').addEventListener('click', ()=>{
+  const panel = document.querySelector('.panel[data-panel="precios"]');
+  panel.classList.add('printing');
+  window.print();
+  setTimeout(()=>panel.classList.remove('printing'), 500);
+});
+
+/* ===================== INIT ===================== */
+function renderAll(){
+  renderReadouts();
+  renderKpis();
+  renderTable();
+  renderPreciosTable();
+}
+populateLineFilter();
+populateLineFilterPrecios();
+renderAll();
+
+/* ===================== EBITDA REAL (VENTAS ANUALES) ===================== */
+let currentSearchEbitdaReal = "";
+let currentLineFilterEbitdaReal = "";
+let currentSortEbitdaReal = "";
+
+function populateLineFilterEbitdaReal(){
+  const sel = document.getElementById('lineFilterEbitdaReal');
+  const lines = [...new Set(EBITDA_REAL_DATA.map(p=>p.linea))].sort();
+  sel.innerHTML = '<option value="">Todas las líneas</option>' + lines.map(l=>`<option value="${l}">${l}</option>`).join('');
+}
+
+function renderEbitdaRealKpis(){
+  const totalVol = EBITDA_REAL_DATA.reduce((s,p)=>s+p.vol,0);
+  const totalRevenue = EBITDA_REAL_DATA.reduce((s,p)=>s+p.revenue,0);
+  const totalEbitda = EBITDA_REAL_DATA.reduce((s,p)=>s+p.ebitdaTotal,0);
+  const ebitdaPctW = totalRevenue!==0 ? (totalEbitda/totalRevenue*100) : 0;
+  const negCount = EBITDA_REAL_DATA.filter(p=>p.ebitda<0).length;
+  document.getElementById('kpiEbitdaReal').innerHTML = `
+    ${kpi('Volumen (mensual)', fmtInt(totalVol)+' kg', '73 familias matcheadas')}
+    ${kpi('Revenue (mensual)', 'USD '+fmtInt(totalRevenue))}
+    ${kpi('EBITDA total (mensual)', 'USD '+fmtInt(totalEbitda), null, totalEbitda>=0)}
+    ${kpi('EBITDA / kg (ponderado)', 'USD '+fmt(totalVol? totalEbitda/totalVol : 0, 3), null, totalEbitda>=0)}
+    ${kpi('EBITDA % (ponderado)', fmtPct(ebitdaPctW), null, ebitdaPctW>=0)}
+    ${kpi('Productos con EBITDA negativo', negCount + ' / ' + EBITDA_REAL_DATA.length, null, negCount===0)}
+  `;
+}
+
+function renderEbitdaRealTable(){
+  const body = document.getElementById('ebitdaRealBody');
+  let rows = [...EBITDA_REAL_DATA];
+
+  if(currentSearchEbitdaReal){
+    const q = currentSearchEbitdaReal.toLowerCase();
+    rows = rows.filter(p=> p.producto.toLowerCase().includes(q) || p.linea.toLowerCase().includes(q));
+  }
+  if(currentLineFilterEbitdaReal){
+    rows = rows.filter(p=>p.linea===currentLineFilterEbitdaReal);
+  }
+  if(currentSortEbitdaReal){
+    const [field, dir] = currentSortEbitdaReal.split('_');
+    rows.sort((a,b)=> dir==='asc' ? a[field]-b[field] : b[field]-a[field]);
+  } else {
+    rows.sort((a,b)=> a.linea.localeCompare(b.linea) || a.producto.localeCompare(b.producto));
+  }
+
+  body.innerHTML = rows.map(p=>`
+    <tr>
+      <td>${p.linea}</td>
+      <td>${p.producto}</td>
+      <td>USD ${fmt(p.precio,2)}</td>
+      <td>${fmt(p.mp_rend,4)}</td>
+      <td class="${p.ebitda<0?'neg':'pos'}">${fmt(p.ebitda,2)}</td>
+      <td class="${p.ebitdaPct<0?'neg':'pos'}">${fmtPct(p.ebitdaPct,1)}</td>
+      <td>${fmtInt(p.vol)}</td>
+      <td>${fmtInt(p.revenue)}</td>
+      <td class="${p.ebitdaTotal<0?'neg':'pos'}">${fmtInt(p.ebitdaTotal)}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('searchBoxEbitdaReal').addEventListener('input', e=>{
+  currentSearchEbitdaReal = e.target.value;
+  renderEbitdaRealTable();
+});
+document.getElementById('lineFilterEbitdaReal').addEventListener('change', e=>{
+  currentLineFilterEbitdaReal = e.target.value;
+  renderEbitdaRealTable();
+});
+document.getElementById('sortFieldEbitdaReal').addEventListener('change', e=>{
+  currentSortEbitdaReal = e.target.value;
+  renderEbitdaRealTable();
+});
+
+populateLineFilterEbitdaReal();
+renderEbitdaRealKpis();
+renderEbitdaRealTable();
+
+/* ===================== PASSWORD GATE ===================== */
+/* Cambiá esta clave por la que quieras usar. Recordá: esto es un filtro
+   simple, no seguridad real — cualquiera que vea el código fuente la puede
+   encontrar. Sirve para que no entre cualquiera con el link nomás. */
+const SITE_PASSWORD = "recsa319";
+
+function tryUnlock(){
+  const val = document.getElementById('lockInput').value;
+  if(val === SITE_PASSWORD){
+    document.body.classList.remove('locked');
+    document.getElementById('lockScreen').style.display = 'none';
+  } else {
+    document.getElementById('lockError').textContent = 'Clave incorrecta, intentá de nuevo.';
+    document.getElementById('lockInput').value = '';
+    document.getElementById('lockInput').focus();
+  }
+}
+document.getElementById('lockBtn').addEventListener('click', tryUnlock);
+document.getElementById('lockInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') tryUnlock();
+});
+</script>
+</body>
+</html>

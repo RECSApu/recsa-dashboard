@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RECSA — Tablero de Trabajo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#121212;--s1:#1a1a1a;--s2:#1f1f1f;--bd:#343434;--tx:#f0f0f0;--t2:#a3a3a3;--ac:#4f8cff;--gn:#00d4aa;--rd:#ff4d6a;--or:#ffb84d;--pu:#a78bfa}
+/* [NUEVO 2026-08-24] Tema claro — se activa agregando la clase "light" al <body> */
+body.light{--bg:#f0f0f0;--s1:#ffffff;--s2:#ffffff;--bd:#d9d9d9;--tx:#141414;--t2:#595959;--ac:#2563eb;--gn:#068a63;--rd:#d6304a;--or:#b8720a;--pu:#6d3fd6}
+/* [NUEVO 2026-08-24] Fondo neutro (sin tintes de color) con relieve sutil:
+   degradé de grises + grilla finísima tipo papel cuadriculado. El contraste
+   se logra únicamente con tonos de gris, coherentes con el color del texto
+   de cada tema — no hay azules/verdes de fondo, esos colores quedan
+   reservados para indicar datos (ganancia/pérdida/alerta). */
+body{
+  background-color:#121212;
+  background-image:
+    linear-gradient(180deg,#161616 0%,#0d0d0d 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0px, rgba(255,255,255,.02) 1px, transparent 1px, transparent 42px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.02) 0px, rgba(255,255,255,.02) 1px, transparent 1px, transparent 42px);
+  background-attachment:fixed;
+}
+body.light{
+  background-color:#f0f0f0;
+  background-image:
+    linear-gradient(180deg,#f7f7f7 0%,#e9e9e9 100%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.03) 0px, rgba(0,0,0,.03) 1px, transparent 1px, transparent 42px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.03) 0px, rgba(0,0,0,.03) 1px, transparent 1px, transparent 42px);
+  background-attachment:fixed;
+}
+body.light .card,body.light .kpi{box-shadow:0 1px 3px rgba(20,30,50,.06)}
+body.light .header{background:linear-gradient(135deg,#efefef,#ffffff)}
+body,.header,.card,.kpi,.tab,input,select,button{transition:background-color .2s ease,color .2s ease,border-color .2s ease}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;color:var(--tx)}
+.header{background:linear-gradient(135deg,#0d0d0d,#1c1c1c);border-bottom:1px solid var(--bd);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header h1{font-size:21px;font-weight:700}.header h1 span{color:var(--ac)}
+.header .sub{color:var(--t2);font-size:12px;margin-top:2px}
+.theme-toggle{width:34px;height:34px;border-radius:8px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.theme-toggle:hover{border-color:var(--ac)}
+.params-bar{display:flex;gap:16px;padding:8px 24px;background:var(--s2);border-bottom:1px solid var(--bd);align-items:center;flex-wrap:wrap}
+.params-bar label{font-size:11px;color:var(--t2)}
+.params-bar input[type=number]{width:72px;background:var(--s1);border:1px solid var(--bd);color:var(--ac);padding:3px 6px;border-radius:4px;font-family:'JetBrains Mono';font-size:12px;text-align:right}
+.params-bar .sep{width:1px;height:20px;background:var(--bd)}
+.tabs{display:flex;gap:0;background:var(--s1);border-bottom:1px solid var(--bd);padding:0 24px;overflow-x:auto}
+.tab{padding:10px 16px;font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
+.tab:hover{color:var(--tx)}.tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.tab.sec{color:var(--or)}.tab.sec.active{color:var(--or);border-bottom-color:var(--or)}
+.content{padding:20px;max-width:1500px;margin:0 auto}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px}
+.kpi{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:12px;text-align:center}
+.kpi .lb{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:1px}
+.kpi .vl{font-family:'JetBrains Mono';font-size:19px;font-weight:600;margin-top:4px}
+.kpi .delta{font-size:11px;margin-top:3px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:16px}
+.card h3{font-size:14px;color:var(--or);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+.card.full{grid-column:1/-1}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--s1);color:var(--t2);padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;position:sticky;top:0;z-index:1}
+td{padding:4px 8px;border-bottom:1px solid rgba(42,52,80,.4)}
+tr:hover{background:rgba(79,140,255,.03)}
+.mono{font-family:'JetBrains Mono';font-size:12px}
+.neg{color:var(--rd)}.pos{color:var(--gn)}.warn{color:var(--or)}
+.tag{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600}
+.tag-ok{background:rgba(0,212,170,.15);color:var(--gn)}
+.tag-bad{background:rgba(255,77,106,.15);color:var(--rd)}
+.tag-warn{background:rgba(255,184,77,.15);color:var(--or)}
+.sr{display:flex;justify-content:space-between;padding:3px 0;font-size:13px}
+.sr .lb{color:var(--t2)}.sr .vl{font-family:'JetBrains Mono';font-weight:600}
+.btn-sm{padding:5px 12px;border-radius:6px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-family:'DM Sans';font-size:12px;cursor:pointer}
+.btn-sm:hover{border-color:var(--ac);color:var(--ac)}
+.btn-load{padding:5px 12px;border-radius:6px;border:1px solid var(--ac);background:rgba(79,140,255,.1);color:var(--ac);font-family:'DM Sans';font-size:12px;font-weight:600;cursor:pointer}
+.btn-load:hover{background:var(--ac);color:#fff}
+.filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.filters select,.filters input{background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:5px 10px;border-radius:6px;font-family:'DM Sans';font-size:12px}
+.filters input[type=text]{flex:1;min-width:120px}
+input[type=range]{width:60px;height:4px;-webkit-appearance:none;background:var(--bd);border-radius:2px;outline:none;cursor:pointer;vertical-align:middle}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--ac);border-radius:50%;cursor:pointer}
+.pv{font-family:'JetBrains Mono';font-size:11px;color:var(--ac);min-width:28px;display:inline-block;text-align:right}
+.sidebar{background:var(--s1);border-left:1px solid var(--bd);padding:16px;overflow-y:auto}
+.sidebar h3{font-size:14px;margin-bottom:12px;color:var(--or)}
+.main-2col{display:grid;grid-template-columns:1fr 300px;min-height:calc(100vh - 200px)}
+.bar{height:7px;background:var(--bd);border-radius:4px;margin-top:6px;overflow:hidden;display:flex}
+.bar .s{height:100%;transition:width .3s}
+.s1{background:var(--ac)}.s2{background:var(--gn)}.s3{background:var(--or)}.s4{background:var(--pu)}
+.legend{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2)}
+.legend i{width:7px;height:7px;border-radius:2px;display:inline-block}
+.alert-box{background:rgba(255,77,106,.08);border:1px solid rgba(255,77,106,.25);border-radius:8px;padding:10px;margin-top:10px}
+.alert-box h4{color:var(--rd);font-size:12px;margin-bottom:4px}
+.alert-box p{font-size:11px;color:var(--t2);padding:1px 0}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.row{grid-template-columns:1fr}.main-2col{grid-template-columns:1fr}}
+
+/* [NUEVO 2026-08-24] Reglas de impresión.
+   Problema 1: las tablas (Pricing, Productos, Unitario, Inventario, Cotizador)
+   están en contenedores con altura fija + scroll (overflow-y:auto). Al imprimir,
+   el navegador solo saca lo que entra en esa altura y corta el resto — por eso
+   "no se podían imprimir las listas de precios" completas. Se les saca el
+   límite de altura y el scroll solo para impresión, así el contenido fluye y
+   pagina normalmente.
+   Problema 2: en tema oscuro el texto es claro (casi blanco). Los navegadores
+   no imprimen fondos por default (a menos que el usuario tilde "gráficos de
+   fondo"), así que quedaba texto claro sobre hoja blanca = invisible. Se
+   fuerza fondo blanco y texto oscuro en la impresión, sin importar qué tema
+   esté activo en pantalla. */
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .header,.params-bar,.tabs,.theme-toggle,.btn-sm,.btn-load,#accessGate,
+  .filters select,.filters input,select,input,button{display:none!important}
+  .content{padding:0;max-width:100%}
+  .card,.kpi{background:#fff!important;border:1px solid #ccc!important;box-shadow:none!important;color:#000!important}
+  .card h3{color:#000!important}
+  #prod-tbl,#pr-tbl,#u-tbl,#inv-tbl,#cot-tbl{max-height:none!important;overflow:visible!important}
+  table{page-break-inside:auto}
+  tr{page-break-inside:avoid}
+  thead{display:table-header-group}
+  th{background:#eee!important;color:#000!important}
+  td{color:#000!important;border-bottom:1px solid #ddd!important}
+  .mono,.sr .vl,.kpi .vl{color:#000!important}
+}
+</style>
+</head>
+<body>
+<div id="accessGate" style="position:fixed;inset:0;z-index:99999;background:#0d0d0d;display:flex;align-items:center;justify-content:center;font-family:inherit;">
+  <div style="background:#181818;border:1px solid #333333;border-radius:10px;padding:36px 32px;max-width:340px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,.5);text-align:center;">
+    <div style="font-size:16px;font-weight:700;letter-spacing:.5px;color:#e7edf3;margin-bottom:4px;">RECSA — Dashboard P&L</div>
+    <div style="font-size:13px;color:#7c8b9b;margin-bottom:14px;">Acceso restringido. Ingresá la contraseña para continuar.</div>
+    <input id="accessGatePw" type="password" placeholder="Contraseña" autocomplete="off"
+      style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:6px;border:1px solid #333333;background:#0d0d0d;color:#e7edf3;font-size:15px;margin-bottom:10px;outline:none;">
+    <button id="accessGateBtn"
+      style="width:100%;padding:10px 12px;border-radius:6px;border:none;background:#2b6fd6;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">Ingresar</button>
+    <div id="accessGateErr" style="color:#e5484d;font-size:13px;margin-top:10px;min-height:14px;"></div>
+    <div style="font-size:11px;color:#5a6b7a;margin-top:16px;border-top:1px solid #333333;padding-top:10px;text-align:left;line-height:1.4;">⚠️ Esta clave es solo un freno visual, no seguridad real: todos los datos ya están cargados en este archivo desde que se abre. No compartir este HTML fuera de canales internos controlados (Drive/SharePoint con permisos).</div>
+  </div>
+</div>
+<script>
+(function(){
+  // [FIX 2026-08-24] Antes la clave estaba en texto plano en el código y se veía
+  // con solo abrir "Ver código fuente". Ahora se compara un hash SHA-256, así que
+  // la clave real no queda expuesta al leer el archivo. OJO: esto sigue sin ser
+  // seguridad real — es solo para que no sea trivialmente legible a simple vista.
+  // Los datos siguen viajando enteros al navegador apenas se abre el archivo;
+  // la única protección real sería un backend con autenticación de usuarios.
+  var PW_HASH = "b5b9700ef090471ec565e10488cdc78635a003eef7f8d0c69ca6f32c25691037"; // hash SHA-256 de la contraseña (no está en texto plano en ningún lado del archivo)
+  var gate = document.getElementById('accessGate');
+  var input = document.getElementById('accessGatePw');
+  var btn = document.getElementById('accessGateBtn');
+  var err = document.getElementById('accessGateErr');
+  document.documentElement.style.overflow = 'hidden';
+  async function sha256Hex(text){
+    var enc = new TextEncoder().encode(text);
+    var buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.prototype.map.call(new Uint8Array(buf), function(b){return b.toString(16).padStart(2,'0');}).join('');
+  }
+  async function tryUnlock(){
+    var hash = await sha256Hex(input.value);
+    if(hash === PW_HASH){
+      gate.style.display = 'none';
+      document.documentElement.style.overflow = '';
+    } else {
+      err.textContent = 'Contraseña incorrecta.';
+      input.value = '';
+      input.focus();
+    }
+  }
+  btn.addEventListener('click', tryUnlock);
+  input.addEventListener('keydown', function(e){ if(e.key === 'Enter') tryUnlock(); });
+  setTimeout(function(){ input.focus(); }, 50);
+})();
+</script>
+<div class="header">
+  <div style="display:flex;align-items:center;gap:12px"><button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Cambiar tema claro/oscuro">🌙</button><div><h1><span>RECSA</span> — Tablero de Trabajo <span id="mesActualLabel" style="font-size:14px;color:var(--ac);font-weight:500;text-transform:capitalize;white-space:nowrap"></span></h1><div class="sub">Pérdidas & Ganancias · Asignación de Gastos · Costo Inventario · <span id="dataSource" style="color:var(--ac)">Datos base</span></div></div></div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn-sm" onclick="exportCSV()">📥 CSV</button>
+  </div>
+</div>
+<div class="params-bar">
+  <div><label>TC USD/ARS</label><br><div style="display:flex;align-items:center;gap:4px"><input type="number" id="pTC" value="1500" step="0.01" oninput="onTCManualChange()" style="width:62px;background:var(--s1);border:1px solid var(--bd);color:var(--pu);padding:2px 4px;border-radius:4px;font-family:'JetBrains Mono';font-size:13px;text-align:right"><button onclick="actualizarTC()" title="Autocompletar con cotización oficial (referencia BNA)" style="width:22px;height:22px;border-radius:4px;border:1px solid var(--bd);background:var(--s1);color:var(--pu);cursor:pointer;font-size:12px;line-height:1;padding:0">🔄</button></div><div id="pTCstatus" style="font-size:9px;color:var(--t2);margin-top:2px;max-width:140px">Manual — click 🔄 <a href="https://www.bna.com.ar/Personas" target="_blank" rel="noopener" style="color:var(--pu)">ver BNA↗</a></div></div>
+  <div><label>Vol Mensual kg</label><br><span class="mono" id="pVoldisplay" style="font-size:13px;color:var(--pu)">23065</span><div style="font-size:9px;color:var(--pu)">← Suma de productos</div></div>
+  <div><label>Flete USD/kg</label><br><span class="mono" id="pFLdisplay" style="font-size:13px;color:var(--pu)">0.20</span><div style="font-size:9px;color:var(--pu)">← Master Técnico</div><input type="hidden" id="pFL" value="0.20"></div>
+  <div><label>Imp %</label><br><span class="mono" id="pIMPdisplay" style="font-size:13px;color:var(--pu)">2.8</span><div style="font-size:9px;color:var(--pu)">← Master Técnico</div><input type="hidden" id="pIMP" value="2.8"></div>
+  <div><label>TNA %</label><br><span class="mono" id="pTNAdisplay" style="font-size:13px;color:var(--pu)">28</span><div style="font-size:9px;color:var(--pu)">← Inventario</div><input type="hidden" id="pTNA" value="28"></div>
+  <div class="sep"></div>
+  <div><label>GF USD/kg</label><br><span class="mono" id="pGFdisplay" style="font-size:13px;color:var(--pu)">1.4472</span><div style="font-size:9px;color:var(--pu)">← Asig. Gastos</div></div>
+  <div><label>Back Office</label><br><span class="mono" id="pBACKdisplay" style="font-size:13px;color:var(--pu)">0.113</span><div style="font-size:9px;color:var(--pu)">← Asig. Gastos</div></div>
+  <div><label>pMOD (CDir)</label><br><span class="mono" id="pMODdisplay" style="font-size:13px;color:var(--pu)">0.6341</span><div style="font-size:9px;color:var(--pu)">← Asig. Gastos</div></div>
+  <input type="hidden" id="pGF" value="1.4472">
+  <input type="hidden" id="pBACK" value="0.113">
+  <input type="hidden" id="pMOD" value="0.6341">
+  <input type="hidden" id="pFIN" value="0.2769">
+  <input type="hidden" id="pOTROSIMP" value="0.3259">
+  <input type="hidden" id="pVol" value="23065">
+</div>
+<div class="tabs" id="tabs"></div>
+<div class="content" id="content"></div>
+<script>
+// [FIX 2026-08-24] Se eliminaron 19 filas duplicadas (mismo código de producto
+// con volumen anual idéntico repetido en 2 a 4 filas), que sumaban de más
+// ~37.963 kg/año y ~USD 67.335 de revenue en los KPIs. Se conservó, por código,
+// la fila con línea real (no 'SIN LINEA') y precio pvo='REAL' cuando existía.
+// Detalle completo de qué filas se sacaron: ver 'cambios_realizados.md' adjunto.
+var P = [{"l":"FAZON","p":"1000085 - DIETANOLAMINA 85 %  - Milberg - 99 - sin envase - Kilo","pv":0.1247,"pvo":"BREAKEVEN","mp":0.1212,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"FAZON","p":"1000120 - QX50I - QUIMECO - 20 - 20 kg - Kilo","pv":0.93,"pvo":"REAL","mp":0.12,"r":1,"v":19320,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":960.0},{"l":"RESINA ELECTRICA","p":"1070001 - RESINA ELECTRICA PU2638R - Componente  A - 99 - sin envase - Kilo","pv":6.74,"pvo":"REAL","mp":3.6577,"r":1,"v":13041.72,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RESINA ELECTRICA","p":"1070002 - RESINA ELECTRICA PU2638R - Componente B - 99 - sin envase - Kilo","pv":6.74,"pvo":"REAL","mp":3.6577,"r":1,"v":5867.870000000001,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"FAZON","p":"1070003 - RESINA ELECTRICA PU2638R Bolsa 1600 ml - sin atributo - Unidad ⚠️","pv":0.5034,"pvo":"BREAKEVEN","mp":0.4893,"r":1,"v":3422,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0,"esUnidad":true},{"l":"FAZON","p":"1070004 - RESINA ELECTRICA PU2638R Bolsa 970 ml - sin atributo - Unidad ⚠️","pv":0.5034,"pvo":"BREAKEVEN","mp":0.4893,"r":1,"v":203,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0,"esUnidad":true},{"l":"FAZON","p":"1070005 - RESINA ELECTRICA PU2638R Bolsa 1800 ml - sin atributo - Unidad ⚠️","pv":0.69,"pvo":"REAL","mp":0.4893,"r":1,"v":786,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0,"esUnidad":true},{"l":"RESINA ELECTRICA","p":"1070006 - RESINA ELECTRICA PU2638R Bolsa 1750 ml - sin atributo - Kilo ⚠️","pv":0.69,"pvo":"REAL","mp":0.0,"r":1,"v":1058,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0,"esUnidad":true},{"l":"REVENTA","p":"1110100 - Pasta Pigmentada Amarilla - 01 - 1 kg - Kilo","pv":18.67,"pvo":"REAL","mp":10.32,"r":1,"v":4.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"REVENTA","p":"1160600 - Pasta Pigmentada Roja - 01 - 1 kg - Kilo","pv":11.7368,"pvo":"BREAKEVEN","mp":8.52,"r":1,"v":1,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0.1},{"l":"REVENTA","p":"1201200 - Plastificante D - 04 - 4 kg - Kilo","pv":5.971,"pvo":"BREAKEVEN","mp":2.9156,"r":1,"v":16.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"REVENTA","p":"1201200 - Plastificante D - 20 - 20 kg - Kilo","pv":5.7327,"pvo":"BREAKEVEN","mp":2.684,"r":1,"v":40.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"DESMOLDANTE","p":"1302035 - Desmoldante 2035 - 01 - 1 kg - Kilo","pv":120.0,"pvo":"REAL","mp":54.5455,"r":1,"v":151,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":3.0},{"l":"RECSADIL","p":"1401404 - RECSADIL UVG 95 - 04 - 4 Lt - Kilo","pv":9.6346,"pvo":"BREAKEVEN","mp":6.4766,"r":1,"v":3.16,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":3.16},{"l":"DILUYENTE","p":"1401405 - Diluyente DCM - 20 - 20 kg - Kilo","pv":4.7456,"pvo":"BREAKEVEN","mp":1.7245,"r":1,"v":380,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":20.0},{"l":"RECSADIL","p":"1401406 - RECSADIL UVG 90 - 04 - 4 Lt - Kilo","pv":12.8638,"pvo":"BREAKEVEN","mp":9.6154,"r":1,"v":17.48,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"REVENTA","p":"1525605 - Cinta Adh. Doble Faz (Esp: 0,5 mm - Ancho: 5 mm) - sin atributo - Unidad","pv":1.5535,"pvo":"BREAKEVEN","mp":1.51,"r":1,"v":80,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":66.0,"esUnidad":true},{"l":"RETICULANTE","p":"2010201 - Reticulante CM - 10 - 10 kg - Kilo","pv":11.3194,"pvo":"BREAKEVEN","mp":8.1143,"r":1,"v":41,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":23.0},{"l":"RETICULANTE","p":"2010201 - Reticulante CM - 50 - 50 kg - Kilo","pv":8.94,"pvo":"REAL","mp":7,"r":1,"v":1100,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RETICULANTE","p":"2010202 - Reticulante E300 - 04 - 4 kg - Kilo","pv":31.1975,"pvo":"REAL","mp":16.5465,"r":1,"v":12,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RETICULANTE","p":"2010202 - Reticulante E300 - 20 - 20 kg - Kilo","pv":19.6998,"pvo":"BREAKEVEN","mp":16.26,"r":1,"v":220,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":20.0},{"l":"RECSAFLEX","p":"2220106 - RETIFLEX - 04 - 4 kg - Kilo","pv":36.048,"pvo":"REAL","mp":16.6384,"r":1,"v":136,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":8.0},{"l":"CATALIZADOR","p":"2330003 - Catalizador 3320 - 01 - 1 kg - Kilo","pv":8.9599,"pvo":"BREAKEVEN","mp":5.8208,"r":1,"v":12,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"CATALIZADOR","p":"2330003 - Catalizador 3320 - 20 - 20 kg - Kilo","pv":8.6245,"pvo":"BREAKEVEN","mp":5.4948,"r":1,"v":20,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"CATALIZADOR","p":"2330004 - Catalizador UVG 15 - 04 - 4 kg - Kilo","pv":8.6824,"pvo":"BREAKEVEN","mp":5.5511,"r":1,"v":36,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"CATALIZADOR","p":"2330005 - Catalizador AG 1030 - 01 - 1 kg - Kilo","pv":6.9881,"pvo":"BREAKEVEN","mp":3.9042,"r":1,"v":12,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSAPREN","p":"3036010 - RECSAPREN R 360 - 20 - 20 kg - Kilo","pv":8.614,"pvo":"REAL","mp":3.6793,"r":1,"v":240,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":20.0},{"l":"RECSAPREN","p":"3037510 - RECSAPREN R 2140 - 20 - 20 kg - Kilo","pv":9.36,"pvo":"REAL","mp":3.7046,"r":1,"v":640,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":20.0},{"l":"RECSAPREN","p":"3038010 - RECSAPREN R 280 - 20 - 20 kg - Kilo","pv":6.8434,"pvo":"BREAKEVEN","mp":3.7636,"r":1,"v":60.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":80.0},{"l":"RECSAPREN","p":"3038060 - RECSAPREN R 8060 - 04 - 4 kg - Kilo","pv":12.0864,"pvo":"BREAKEVEN","mp":8.8598,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSAPREN","p":"3038510 - RECSAPREN R 250 - 20 - 20 kg - Kilo","pv":7.119,"pvo":"BREAKEVEN","mp":4.0315,"r":1,"v":200,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":40.0},{"l":"RECSAPREN","p":"3039010 - RECSAPREN R 172 - 20 - 20 kg - Kilo","pv":7.1234,"pvo":"BREAKEVEN","mp":4.0357,"r":1,"v":740,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":40.0},{"l":"RECSAPREN","p":"3039010 - RECSAPREN R 172 - 22 - 200 kg - Kilo","pv":6.9176,"pvo":"BREAKEVEN","mp":3.8357,"r":1,"v":1600,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSAPREN","p":"3039260 - RECSAPREN R 9260 - 04 - 4 kg - Kilo","pv":11.7869,"pvo":"BREAKEVEN","mp":8.5687,"r":1,"v":4.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSAPREN","p":"3039260 - RECSAPREN R 9260 - 20 - 20 kg - Kilo","pv":15.554,"pvo":"REAL","mp":8.2142,"r":1,"v":220,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":41.0},{"l":"RECSAPREN","p":"3039510 - RECSAPREN R 178 - 20 - 20 kg - Kilo","pv":7.45,"pvo":"REAL","mp":4.0121,"r":1,"v":2340,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":60.0},{"l":"RECSAPREN","p":"3039510 - RECSAPREN R 178 - 22 - 200 kg - Kilo","pv":6.8933,"pvo":"BREAKEVEN","mp":3.8121,"r":1,"v":1000.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":200.0},{"l":"RECSAPREN","p":"3039560 - RECSAPREN R 9560 - 20 - 20 kg - Kilo","pv":11.7295,"pvo":"BREAKEVEN","mp":8.5129,"r":1,"v":397,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSAPREN","p":"3046510 - RECSAPREN R 190 - 20 - 20 kg - Kilo","pv":7.2593,"pvo":"BREAKEVEN","mp":4.1678,"r":1,"v":120.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSAPREN","p":"3047560 - RECSAPREN R75D60 - 20 - 20 kg - Kilo","pv":12.11,"pvo":"REAL","mp":7.581,"r":1,"v":40,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":40.0},{"l":"RECSAPREN","p":"3938546 - RECSAPREN FLEX 85 Rojo - 20 - 20 kg - Kilo","pv":10.9044,"pvo":"REAL","mp":3.6827,"r":1,"v":1200,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":193.0},{"l":"RECSABOND","p":"4001041 - RECSABOND LN 40 AV - 20 - 20 kg - Kilo","pv":6.4101,"pvo":"BREAKEVEN","mp":3.3424,"r":1,"v":100.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":80.0},{"l":"RECSABOND","p":"4100001 - RECSABOND Primer - 04 - 4 kg - Kilo","pv":6.4277,"pvo":"BREAKEVEN","mp":3.3595,"r":1,"v":4.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":8.0},{"l":"RECSABOND","p":"4100001 - RECSABOND Primer - 20 - 20 kg - Kilo","pv":6.42,"pvo":"REAL","mp":3.1635,"r":1,"v":600,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4100001 - RECSABOND Primer - 22 - 200 kg - Kilo","pv":6.1602,"pvo":"BREAKEVEN","mp":3.0995,"r":1,"v":2000.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4100010 - Recsabond AG 10 - 20 - 20 kg - Kilo","pv":6.386,"pvo":"BREAKEVEN","mp":3.319,"r":1,"v":80.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":40.0},{"l":"RECSABOND","p":"4100010 - Recsabond AG 10 - 22 - 200 kg - Kilo","pv":5.82,"pvo":"REAL","mp":3.255,"r":1,"v":2600,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":400.0},{"l":"RECSABOND","p":"4100030 - Recsabond AG 30 - 04 - 4 kg - Kilo","pv":6.293,"pvo":"BREAKEVEN","mp":3.2286,"r":1,"v":4.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4100030 - Recsabond AG 30 - 20 - 20 kg - Kilo","pv":8.1128,"pvo":"REAL","mp":3.0326,"r":1,"v":180,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":40.0},{"l":"RECSABOND","p":"4100030 - Recsabond AG 30 - 22 - 200 kg - Kilo","pv":5.99,"pvo":"REAL","mp":2.9686,"r":1,"v":11800,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":1000.0},{"l":"RECSABOND","p":"4100050 - RECSABOND AG 50 - 00 - 1000 kg - Kilo","pv":6.3922,"pvo":"BREAKEVEN","mp":3.325,"r":1,"v":8000,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4100050 - RECSABOND AG 50 - 04 - 4 kg - Kilo","pv":6.704,"pvo":"BREAKEVEN","mp":3.6281,"r":1,"v":4.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4100050 - RECSABOND AG 50 - 20 - 20 kg - Kilo","pv":7.5036,"pvo":"REAL","mp":3.389,"r":1,"v":1440,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":100.0},{"l":"RECSABOND","p":"4100050 - RECSABOND AG 50 - 22 - 200 kg - Kilo","pv":5.7443,"pvo":"REAL","mp":3.325,"r":1,"v":96856,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":601.0},{"l":"RECSABOND","p":"4100055 - RECSABOND HP - 04 - 4 kg - Kilo","pv":6.7481,"pvo":"BREAKEVEN","mp":3.671,"r":1,"v":12,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4100055 - RECSABOND HP - 20 - 20 kg - Kilo","pv":6.5465,"pvo":"BREAKEVEN","mp":3.475,"r":1,"v":800,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":20.0},{"l":"RECSABOND","p":"4100055 - RECSABOND HP - 22 - 200 kg - Kilo","pv":6.4807,"pvo":"BREAKEVEN","mp":3.411,"r":1,"v":4150,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4100055 - RECSABOND HP - 26 - 225 kg - Kilo","pv":8.73,"pvo":"REAL","mp":3.3988,"r":1,"v":2250,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4311300 - RECSABOND UVG 300 A - 20 - 20 kg - Kilo","pv":15.1861,"pvo":"REAL","mp":4.5674,"r":1,"v":1540,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":33.0},{"l":"RECSABOND","p":"4321300 - RECSABOND UVG 300 B - 20 - 20 kg - Kilo","pv":15.26,"pvo":"REAL","mp":4.5674,"r":1,"v":1232,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":16.0},{"l":"RECSABOND","p":"4401007 - RECSABOND RF 7 - 04- 4 kg - Kilo","pv":6.622,"pvo":"BREAKEVEN","mp":3.5484,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4401007 - RECSABOND RF 7 - 10 - 10 kg - Kilo","pv":6.5757,"pvo":"BREAKEVEN","mp":3.5034,"r":1,"v":7710,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":53.0},{"l":"RECSABOND","p":"4401007 - RECSABOND RF 7 - 15 - 15 kg - Kilo","pv":6.5449,"pvo":"BREAKEVEN","mp":3.4734,"r":1,"v":1275.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4401007 - RECSABOND RF 7 - 20 - 20 kg - Kilo","pv":6.4667,"pvo":"BREAKEVEN","mp":3.3974,"r":1,"v":20.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4401007 - RECSABOND RF 7 - 22-200 kg - Kilo","pv":6.4008,"pvo":"BREAKEVEN","mp":3.3334,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500495 - RECSABOND ML 495 - 01 - 1 kg - Kilo","pv":7.0419,"pvo":"BREAKEVEN","mp":3.9565,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500495 - RECSABOND ML 495 - 20 - 20 kg - Kilo","pv":6.8258,"pvo":"BREAKEVEN","mp":3.7465,"r":1,"v":740,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500495 - RECSABOND ML 495 - 22 - 200 kg - Kilo","pv":6.6201,"pvo":"BREAKEVEN","mp":3.5465,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500630 - RECSABOND ML 630 - 01 - 1 kg - Kilo","pv":7.2733,"pvo":"BREAKEVEN","mp":4.1814,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500723 - RECSABOND ML 723 - 20 - 20 kg - Kilo","pv":6.3035,"pvo":"BREAKEVEN","mp":3.2388,"r":1,"v":800,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":146.0},{"l":"RECSABOND","p":"4500810 - RECSABOND ML 810 - 20 - 20 kg - Kilo","pv":6.69,"pvo":"REAL","mp":3.4341,"r":1,"v":420,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":27.0},{"l":"RECSABOND","p":"4500810 - RECSABOND ML 810 - 22 - 200 kg - Kilo","pv":6.2987,"pvo":"BREAKEVEN","mp":3.2341,"r":1,"v":1000,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5010145 - RECSASEAL EL 145 Cte A - 04 - 4 kg - Kilo","pv":7.2179,"pvo":"BREAKEVEN","mp":4.1276,"r":1,"v":3.45,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5010145 - RECSASEAL EL 145 Cte A - 20 - 20 kg - Kilo","pv":7.0163,"pvo":"BREAKEVEN","mp":3.9316,"r":1,"v":40.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5010145 - RECSASEAL EL 145 Cte A - 99 - sin envase kg - Kilo","pv":6.7345,"pvo":"BREAKEVEN","mp":3.6577,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5014125 - RECSASEAL EL 125 Comp. A - 04 - 4 kg - Kilo","pv":7.0407,"pvo":"BREAKEVEN","mp":3.9554,"r":1,"v":8.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5014125 - RECSASEAL EL 125 Comp. A - 20 - 20 kg - Kilo","pv":6.8486,"pvo":"BREAKEVEN","mp":3.7686,"r":1,"v":20,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":60.0},{"l":"RECSASEAL","p":"5014125 - RECSASEAL EL 125 Comp. A - 22 - 200 kg - Kilo","pv":8.61,"pvo":"REAL","mp":3.6782,"r":1,"v":6200,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5014220 - RECSASEAL EL 220 CTE A - 20 - 20 kg - Kilo","pv":5.98,"pvo":"REAL","mp":2.6343,"r":1,"v":3660,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":35.5},{"l":"RECSASEAL","p":"5020125 - RECSASEAL EL 125 Comp. B - 01 - 1 kg - Kilo","pv":7.0407,"pvo":"BREAKEVEN","mp":3.9554,"r":1,"v":3.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5020125 - RECSASEAL EL 125 Comp. B - 04 - 4 kg - Kilo","pv":6.8486,"pvo":"BREAKEVEN","mp":3.7686,"r":1,"v":4.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":4.0},{"l":"RECSASEAL","p":"5020125 - RECSASEAL EL 125 Comp. B - 20 - 20 kg - Kilo","pv":8.61,"pvo":"REAL","mp":3.6782,"r":1,"v":1400,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5020145 - RECSASEAL EL 145 Cte B - 01 - 1 kg - Kilo","pv":7.041,"pvo":"BREAKEVEN","mp":3.9557,"r":1,"v":1.55,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5020145 - RECSASEAL EL 145 Cte B - 04 - 4 kg - Kilo","pv":6.8867,"pvo":"BREAKEVEN","mp":3.8057,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5020145 - RECSASEAL EL 145 Cte B - 20 - 20 kg - Kilo","pv":6.6851,"pvo":"BREAKEVEN","mp":3.6097,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5020145 - RECSASEAL EL 145 Cte B - 99 - sin envase kg - Kilo","pv":6.7345,"pvo":"BREAKEVEN","mp":3.6577,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5020220 - RECSASEAL EL 220 CTE B - 04 - 4 kg - Kilo","pv":6.827,"pvo":"BREAKEVEN","mp":3.7476,"r":1,"v":4.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5020220 - RECSASEAL EL 220 CTE B - 20 - 20 kg - Kilo","pv":9.92,"pvo":"REAL","mp":3.5516,"r":1,"v":364,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSASEAL","p":"5100027 - RECSASEAL S 164W - 20 - 20 kg - Kilo","pv":6.7985,"pvo":"BREAKEVEN","mp":3.7199,"r":1,"v":520,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":20.0},{"l":"RECSACOAT","p":"6100051 - RECSACOAT RC 51 Comp. A - 04 - 4 kg - Kilo","pv":7.1078,"pvo":"BREAKEVEN","mp":4.0206,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACOAT","p":"6100051 - RECSACOAT RC 51 Comp. A - 20 - 20 kg - Kilo","pv":6.9062,"pvo":"BREAKEVEN","mp":3.8246,"r":1,"v":0.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACOAT","p":"6100069 - RECSACOAT TX - 20 - 20 kg - Kilo","pv":9.6895,"pvo":"BREAKEVEN","mp":6.53,"r":1,"v":300,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACOAT","p":"6102051 - RECSACOAT RC 51 Comp. B - 01 - 1 kg - Kilo","pv":7.2623,"pvo":"BREAKEVEN","mp":4.1708,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACOAT","p":"6102080 - RECSACOAT HPI 80 ISO - 20 - 20 kg - Kilo","pv":11.0401,"pvo":"BREAKEVEN","mp":7.8428,"r":1,"v":20.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACOAT","p":"6120101 - RECSACOAT WRC GRIS - 20 - 20 kg - Kilo","pv":8.1992,"pvo":"REAL","mp":3.4675,"r":1,"v":2576,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":220.0},{"l":"RECSACOAT","p":"6191080 - RECSACOAT HPI 80 NARANJA RESINA - 20 - 20 kg - Kilo","pv":11.0401,"pvo":"BREAKEVEN","mp":7.8428,"r":1,"v":20.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":21.0},{"l":"RECSACROM","p":"8001401 - RECSACROM G AMARILLO - 25 - 25 kg - Kilo","pv":3.9103,"pvo":"BREAKEVEN","mp":0.9126,"r":1,"v":1250,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001403 - RECSACROM G VIOLETA - 25 - 25 kg - Kilo","pv":3.7577,"pvo":"BREAKEVEN","mp":0.7643,"r":1,"v":350.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001404 - RECSACROM G GRIS - 25 - 25 kg - Kilo","pv":3.5564,"pvo":"BREAKEVEN","mp":0.5686,"r":1,"v":750.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":7.0},{"l":"RECSACROM","p":"8001406 - RECSACROM G ROJO CLARO - 25 - 25 kg - Kilo","pv":3.6906,"pvo":"BREAKEVEN","mp":0.6991,"r":1,"v":200,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001407 - RECSACROM G AZUL - 25 - 25 kg - Kilo","pv":3.5287,"pvo":"BREAKEVEN","mp":0.5417,"r":1,"v":275.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001408 - RECSACROM G VERDE - 25 - 25 kg - Kilo","pv":3.5367,"pvo":"BREAKEVEN","mp":0.5495,"r":1,"v":250.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001409 - RECSACROM G NARANJA - 25 - 25 kg - Kilo","pv":3.6468,"pvo":"BREAKEVEN","mp":0.6565,"r":1,"v":250.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001416 - RECSACROM G ROJO - 25 - 25 kg - Kilo","pv":3.6857,"pvo":"BREAKEVEN","mp":0.6943,"r":1,"v":250.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001417 - RECSACROM G CELESTE - 25 - 25 kg - Kilo","pv":3.5662,"pvo":"BREAKEVEN","mp":0.5781,"r":1,"v":575,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001419 - RECSACROM G NARANJA CLARO - 25 - 25 kg - Kilo","pv":3.5857,"pvo":"BREAKEVEN","mp":0.5971,"r":1,"v":75.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001426 - RECSACROM G ROJO OXIDO - 25 - 25 kg - Kilo","pv":3.5644,"pvo":"BREAKEVEN","mp":0.5764,"r":1,"v":200.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001428 - RECSACROM G VERDE CESPED - 25 - 25 kg - Kilo","pv":3.5164,"pvo":"BREAKEVEN","mp":0.5297,"r":1,"v":375.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACROM","p":"8001436 - RECSACROM G ROSA - 25 - 25 kg - Kilo","pv":3.682,"pvo":"BREAKEVEN","mp":0.6907,"r":1,"v":300.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"REVENTA","p":"9021002 - MDI Polimerico - 99 - Sin Envase - Kilo","pv":6.5722,"pvo":"BREAKEVEN","mp":3.5,"r":1,"v":0.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":1253.0},{"l":"REVENTA","p":"9021002 - MDI Polimerico - 99 - sin envase - Kilo","pv":6.5722,"pvo":"BREAKEVEN","mp":3.5,"r":1,"v":0.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"REVENTA","p":"9084014 - Granza de caucho  1 - 4 mm - 25 - 25 kg - Kilo","pv":3.5887,"pvo":"BREAKEVEN","mp":0.6,"r":1,"v":100.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":915.2},{"l":"RESINA ELECTRICA","p":"9972638 - Resina Elec.PU2638R - sin atributo - Unidad ⚠️","pv":0,"pvo":"SIN_DATO","mp":0.0,"r":1,"v":5102,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":1.0,"esUnidad":true},{"l":"RECSASEAL","p":"5918002 - KIT RECSASEAL S 180 - x 2.5 kg - Kilo","pv":4.4363,"pvo":"BREAKEVEN","mp":4.3121,"r":1,"v":115,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0,"esUnidad":true},{"l":"RECSASEAL","p":"5918010 - KIT RECSASEAL S 180 - x 10 kg - Kilo","pv":4.1092,"pvo":"BREAKEVEN","mp":3.9941,"r":1,"v":500,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0,"esUnidad":true},{"l":"SIN LINEA","p":"1401404 -  - 04 - 4 kg - Kilo","pv":9.6346,"pvo":"BREAKEVEN","mp":6.4766,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"DILUYENTE","p":"1401405 - Diluyente DCM - 22 - 200 kg - Kilo","pv":4.4735,"pvo":"BREAKEVEN","mp":1.46,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"SIN LINEA","p":"1525605 -  - Unidad - Kilo","pv":1.5535,"pvo":"BREAKEVEN","mp":1.51,"r":1,"v":80,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0,"esUnidad":true},{"l":"RECSAPREN","p":"3038060 - RECSAPREN R 8060 - 20 - 20 kg - Kilo","pv":12.0247,"pvo":"BREAKEVEN","mp":8.7998,"r":1,"v":100.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":20.0},{"l":"RECSAPREN","p":"3039560 - RECSAPREN R 9560 - 04 - 4 kg - Kilo","pv":11.7913,"pvo":"BREAKEVEN","mp":8.5729,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":6.8},{"l":"RECSABOND","p":"4001041 - RECSABOND LN 40 AV - 22 - 200 kg - Kilo","pv":6.3442,"pvo":"BREAKEVEN","mp":3.2784,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500630 - RECSABOND ML 630 - 04 - 4 kg - Kilo","pv":7.1189,"pvo":"BREAKEVEN","mp":4.0314,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500630 - RECSABOND ML 630 - 20 - 20 kg - Kilo","pv":7.0572,"pvo":"BREAKEVEN","mp":3.9714,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500630 - RECSABOND ML 630 - 22 - 200 kg - Kilo","pv":6.8514,"pvo":"BREAKEVEN","mp":3.7714,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSABOND","p":"4500723 - RECSABOND ML 723 - 22 - 200 kg - Kilo","pv":6.0977,"pvo":"BREAKEVEN","mp":3.0388,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACOAT","p":"6102051 - RECSACOAT RC 51 Comp. B - 04 - 4 kg - Kilo","pv":7.108,"pvo":"BREAKEVEN","mp":4.0208,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"RECSACOAT","p":"6102051 - RECSACOAT RC 51 Comp. B - 20 - 20 kg - Kilo","pv":6.9064,"pvo":"BREAKEVEN","mp":3.8248,"r":1,"v":60.0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0},{"l":"CATALIZADOR","p":"2330005 - Catalizador AG 1030 - 04 - 4 kg - Kilo","pv":6.9881,"pvo":"BREAKEVEN","mp":3.9042,"r":1,"v":0,"mod":0,"am":0,"ifin":0,"o":"PROD","lt":30,"ss":30,"sk":0}];
+
+var G_GASTOS_RECSA = {
+  // [ACTUALIZADO 2026-08-24] Fuente: master_de_gastos (4).xlsx + master_gastos_financieros (5).xlsx.
+  costo_directo: 30411320, // Costos directos RECSA (col H) 28.021.960 + Logística RECSA (col L) 2.389.360
+  fijos:          50366627.50, // Costos fijos RECSA (col J, total)
+  back:            8188640, // Back office RECSA (col N, total)
+  fin:             9579338.84, // master_gastos_financieros: Financiero RECSA (total)
+  otros_imp:      902510.61  // master_gastos_financieros: Impuestos RECSA (93.510,61) + AFIP RECSA (809.000)
+};
+
+// Restaurar pGF/pMOD desde localStorage al iniciar
+// Helper: volumen mensual real del negocio (suma de productos / 12)
+// Es la ÚNICA fuente de verdad de volumen del dashboard. Usado por:
+//   - KPI "Kilos Vendidos" del Resumen (Σ p.v)
+//   - loadGastos (Asig. Gastos) → para calcular GF/kg y MOD/kg desde gastos en ARS
+//   - cotCalcular (Cotizador) → volumen base para absorción incremental
+//   - input hidden pVol (sincronizado al cargar y al recalcular)
+// ===== TEMA CLARO/OSCURO =====
+// [NUEVO 2026-08-24] Botón para alternar entre fondo oscuro (default) y claro.
+// La preferencia se guarda en localStorage para que quede recordada la próxima vez.
+function applyTheme(theme){
+  var btn=document.getElementById('themeToggleBtn');
+  if(theme==='light'){
+    document.body.classList.add('light');
+    if(btn){btn.textContent='☀️';}
+  } else {
+    document.body.classList.remove('light');
+    if(btn){btn.textContent='🌙';}
+  }
+}
+function toggleTheme(){
+  var isLight=document.body.classList.contains('light');
+  var next=isLight?'dark':'light';
+  applyTheme(next);
+  try{localStorage.setItem('recsa_theme',next);}catch(e){}
+}
+// [NUEVO 2026-09-02] Mostrar el mes/año actual real (fecha del sistema del
+// usuario) al lado del botón de tema, para ubicar rápido en qué mes se está
+// parado al mirar el dashboard.
+(function(){
+  try{
+    var el=document.getElementById('mesActualLabel');
+    if(el){
+      var hoy=new Date();
+      el.textContent='· '+hoy.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    }
+  }catch(e){}
+})();
+(function(){
+  try{
+    var saved=localStorage.getItem('recsa_theme');
+    if(saved==='light')applyTheme('light');
+  }catch(e){}
+})();
+
+function getVolMensualReal(){
+  var total = 0;
+  for(var i=0;i<P.length;i++) total += (P[i].v || 0);
+  return total / 12;
+}
+// Sincronizar input hidden y display al iniciar
+(function(){
+  try{
+    var v = getVolMensualReal();
+    var inp = document.getElementById('pVol');
+    if(inp) inp.value = Math.round(v);
+    var disp = document.getElementById('pVoldisplay');
+    if(disp) disp.textContent = Math.round(v).toLocaleString('es-AR');
+  }catch(e){}
+})();
+
+// ===== Kilos y Facturación "por otra vía" =====
+// [ACTUALIZADO 2026-08-24] Rediseño a pedido: "Kilos Totales" pasa a ser un
+// valor CARGADO (no calculado) — el promedio real de 12 meses (ago'25 a
+// jul'26) de la fila "TOTAL COMPLETO" de RECSA_STOCK_VENTA_AGOSTO_25_A_
+// JULIO_26_CON_CODIGOS.xlsx. "Kilos Otra Vía" pasa a ser CALCULADO como la
+// diferencia entre ese Total Completo y lo que tenemos identificado por
+// producto (Kilos Vendidos / 12 = fila "Total" / SISTEMA del mismo archivo).
+// Facturación sigue como antes (carga manual mensual) porque no tenemos el
+// desglose de 12 meses en USD — solo un mes (julio 2026) de la otra planilla
+// (VMS_Precio_Promedio), así que ahí "Otra Vía" sigue siendo un dato puntual,
+// no un promedio.
+function getKgTotalCompletoMensual(){
+  // "Kilos Totales" — CARGADO: promedio real de 12 meses (ago'25-jul'26) del
+  // volumen total de la empresa (identificado por producto + otra vía).
+  try{ return parseFloat(localStorage.getItem('recsa_kgTotalCompletoMensual'))||0; }catch(e){ return 0; }
+}
+function setKgTotalCompleto(val){
+  try{ localStorage.setItem('recsa_kgTotalCompletoMensual', parseFloat(val)||0); }catch(e){}
+  recalcGastosDerivados();
+  if(typeof renderContent==='function')renderContent();
+}
+function getKgOtraViaMensual(){
+  // "Kilos Otra Vía" — CALCULADO: Kilos Totales (cargado) − Kilos Vendidos
+  // mensualizado (lo que identificamos por producto). Puede dar negativo si
+  // el sistema reporta más que el "total completo" cargado (dato desfasado).
+  return getKgTotalCompletoMensual() - getVolMensualReal();
+}
+// [ACTUALIZADO 2026-08-24] Facturación Otra Vía pasa de carga manual a
+// CALCULADA, igual criterio que Kilos — ahora que tenemos el desglose real de
+// 12 meses (ago25-jul26) de VENTAS_MENSUALES_DESDE_AGOSTO25_EN_ADELANTE.xlsx
+// (columnas "OTRA VIA USD" y "TOTAL COMPLETO USD"). "Facturación Total /mes"
+// pasa a ser el dato CARGADO (promedio real de 12 meses de TOTAL COMPLETO), y
+// "Facturación Otra Vía" se CALCULA como Total − Vendida/mes.
+function getFacTotalCompletoMensual(){
+  // "Facturación Total /mes" — CARGADO: promedio real de 12 meses (ago25-
+  // jul26) de la columna "TOTAL COMPLETO USD".
+  try{ return parseFloat(localStorage.getItem('recsa_facTotalCompletoMensual'))||0; }catch(e){ return 0; }
+}
+function setFacTotalCompleto(val){
+  try{ localStorage.setItem('recsa_facTotalCompletoMensual', parseFloat(val)||0); }catch(e){}
+  if(typeof renderContent==='function')renderContent();
+}
+function getFacOtraViaMensual(){
+  // "Facturación Otra Vía" — CALCULADO: Facturación Total (cargado) −
+  // Facturación Vendida mensualizada (cargada). Puede dar negativo si el
+  // dato de Vendida cargado supera al Total cargado (revisar carga).
+  var facVendidaManual=getFacturacionVendidaManual();
+  var facVendidaMensual=(facVendidaManual===null?0:facVendidaManual)/12;
+  return getFacTotalCompletoMensual()-facVendidaMensual;
+}
+// [NUEVO 2026-08-24] "Facturación Vendida" — CARGA MANUAL a pedido, ya no se
+// muestra el Σ(precio×volumen) calculado como cifra principal. Motivo: mucho
+// precio de venta (pv) es un placeholder "BREAKEVEN" (no una venta real
+// confirmada), así que el cálculo automático no es una cifra certera para
+// reportar como facturación — hay que cargar el dato real del sistema
+// contable al cierre de cada mes. El cálculo interno (Σ precio×volumen)
+// sigue existiendo y se usa SOLO para los % de Margen (CMG/EBITDA), porque
+// esos se derivan de la misma base de datos por producto y necesitan ser
+// consistentes entre sí — no se mezclan con este valor manual.
+function getFacturacionVendidaManual(){
+  try{
+    var v=localStorage.getItem('recsa_facturacionVendidaManual');
+    return v===null?null:parseFloat(v);
+  }catch(e){ return null; }
+}
+function setFacturacionVendida(val){
+  try{ localStorage.setItem('recsa_facturacionVendidaManual', parseFloat(val)||0); }catch(e){}
+  if(typeof renderContent==='function')renderContent();
+}
+// Precarga con el TOTAL REAL de 12 meses (ago25-jul26) de
+// VENTAS_MENSUALES_DESDE_AGOSTO25_EN_ADELANTE.xlsx — mismos 12 meses que se
+// usaron para Kilos Totales, así ambos quedan bajo el mismo criterio real.
+// Solo si el usuario todavía no cargó/confirmó nada a mano.
+(function(){
+  try{
+    if(localStorage.getItem('recsa_facturacionVendidaManual')===null){
+      localStorage.setItem('recsa_facturacionVendidaManual', 1242625.16);
+    }
+    if(localStorage.getItem('recsa_facTotalCompletoMensual')===null){
+      localStorage.setItem('recsa_facTotalCompletoMensual', 120735.09);
+    }
+  }catch(e){}
+})();
+function getVolMensualTotal(){
+  // Base real de la planta para diluir estructura = Kilos Totales cargado
+  // (ya contempla productos + otra vía, por definición de cómo se compone).
+  return getKgTotalCompletoMensual();
+}
+// [NUEVO 2026-09-03] "Promedio Unidades /mes" — carga manual, promedio real
+// de 12 meses (sept25-ago26) de los códigos que se miden en Unidad y no
+// tienen equivalencia en kg conocida (cinta adhesiva, bolsas de resina
+// eléctrica, trabajos para terceros): 1525605, 1070003, 1070004, 1070005,
+// 1070006, 9972638. Se excluyen del total "Kilos Vendidos" porque sumar
+// unidades de productos tan distintos como si fueran kilos no tiene sentido
+// — se muestran acá aparte, como referencia informativa.
+function getPromedioUnidadesMensual(){
+  try{ return parseFloat(localStorage.getItem('recsa_promedioUnidadesMensual'))||0; }catch(e){ return 0; }
+}
+function setPromedioUnidades(val){
+  try{ localStorage.setItem('recsa_promedioUnidadesMensual', parseFloat(val)||0); }catch(e){}
+  if(typeof renderContent==='function')renderContent();
+}
+// Precarga con el promedio real de 12 meses (sept25-ago26) de
+// RECSA_STOCK_VENTA_SEPT_25_A_AGOSTO_26_CON_CODIGOS.xlsx, sumando los 6
+// códigos "Unidad sin kg": 1525605(6,67) + 1070003(285,17) + 1070004(16,92)
+// + 1070005(65,50) + 1070006(88,17) + 9972638(425,17) = 887,58 unid/mes.
+(function(){
+  try{
+    if(localStorage.getItem('recsa_promedioUnidadesMensual')===null){
+      localStorage.setItem('recsa_promedioUnidadesMensual', 887.58);
+    }
+  }catch(e){}
+})();
+// Precarga con el promedio real de 12 meses (ago'25-jul'26) de
+// RECSA_STOCK_VENTA_AGOSTO_25_A_JULIO_26_CON_CODIGOS.xlsx, fila "TOTAL
+// COMPLETO" — solo si el usuario todavía no cargó nada.
+(function(){
+  try{
+    if(localStorage.getItem('recsa_kgTotalCompletoMensual')===null){
+      localStorage.setItem('recsa_kgTotalCompletoMensual', 22062.62);
+    }
+    if(localStorage.getItem('recsa_facOtraViaMensual')===null){
+      localStorage.setItem('recsa_facOtraViaMensual', 20573.68);
+    }
+  }catch(e){}
+})();
+
+// ===== TC (tipo de cambio) — automático + manual =====
+// [NUEVO 2026-08-24] El TC ahora es editable y tiene un botón para autocompletar
+// desde una API pública de cotización (referencia al oficial/BNA). IMPORTANTE:
+// el navegador no puede leer bna.com.ar directamente (lo bloquea CORS, como a
+// cualquier sitio), así que se usa una API pública pensada para ser consultada
+// así. Si falla (sin internet, API caída, bloqueo de red), queda la carga
+// manual + el link a BNA para cotejar el valor "a mano".
+function recalcGastosDerivados(){
+  // Recalcula pGF/pBACK/pMOD/pFIN/pOTROSIMP a partir de los ARS fijos
+  // (G_GASTOS_RECSA) y el TC + volumen ACTUALES, para que si el TC cambia,
+  // todo el P&L (no solo el simulador de volumen) quede consistente.
+  // [FIX 2026-08-24] Usa getVolMensualTotal() (productos + otra vía), no solo
+  // getVolMensualReal(), para que la estructura de costos se diluya sobre el
+  // volumen real de planta.
+  try{
+    var tc=parseFloat(document.getElementById('pTC').value)||1500;
+    var vol=getVolMensualTotal();
+    if(vol<=0)return;
+    var GA=G_GASTOS_RECSA;
+    var setVal=function(inputId,displayId,val){
+      var el=document.getElementById(inputId); if(el)el.value=val;
+      var d=displayId?document.getElementById(displayId):null; if(d)d.textContent=val;
+    };
+    setVal('pGF','pGFdisplay',(GA.fijos/(tc*vol)).toFixed(4));
+    setVal('pBACK','pBACKdisplay',(GA.back/(tc*vol)).toFixed(4));
+    setVal('pMOD','pMODdisplay',(GA.costo_directo/(tc*vol)).toFixed(4));
+    setVal('pFIN',null,(GA.fin/(tc*vol)).toFixed(4));
+    setVal('pOTROSIMP',null,(GA.otros_imp/(tc*vol)).toFixed(4));
+  }catch(e){}
+}
+recalcGastosDerivados(); // al cargar la página, con el TC/volumen actuales
+
+function onTCManualChange(){
+  recalcGastosDerivados();
+  var st=document.getElementById('pTCstatus');
+  if(st){st.innerHTML='Manual — click 🔄 <a href="https://www.bna.com.ar/Personas" target="_blank" rel="noopener" style="color:var(--pu)">ver BNA↗</a>';st.style.color='var(--t2)';}
+  if(typeof renderContent==='function')renderContent();
+}
+
+async function actualizarTC(){
+  var st=document.getElementById('pTCstatus');
+  if(st){st.textContent='Actualizando...';st.style.color='var(--t2)';}
+  var venta=null, fuente=null;
+  // Intento 1: dolarapi.com (oficial)
+  try{
+    var r1=await fetch('https://dolarapi.com/v1/dolares/oficial');
+    if(r1.ok){var d1=await r1.json();if(d1&&d1.venta){venta=parseFloat(d1.venta);fuente='dolarapi.com';}}
+  }catch(e){}
+  // Intento 2 (fallback): bluelytics
+  if(!venta){
+    try{
+      var r2=await fetch('https://api.bluelytics.com.ar/v2/latest');
+      if(r2.ok){var d2=await r2.json();if(d2&&d2.oficial&&d2.oficial.value_sell){venta=parseFloat(d2.oficial.value_sell);fuente='bluelytics.com.ar';}}
+    }catch(e){}
+  }
+  if(venta&&venta>0){
+    document.getElementById('pTC').value=venta.toFixed(2);
+    recalcGastosDerivados();
+    if(typeof renderContent==='function')renderContent();
+    var ahora=new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    if(st){st.innerHTML='TC '+venta.toFixed(2)+' ('+fuente+', '+ahora+') — no es el BNA en vivo, <a href="https://www.bna.com.ar/Personas" target="_blank" rel="noopener" style="color:var(--gn)">cotejar↗</a>';st.style.color='var(--gn)';}
+  } else {
+    if(st){st.innerHTML='No se pudo actualizar (sin internet o API caída). Cargá el TC a mano — <a href="https://www.bna.com.ar/Personas" target="_blank" rel="noopener" style="color:var(--rd)">ver BNA↗</a>';st.style.color='var(--rd)';}
+  }
+}
+function restoreGastosPersisted(){
+  try{
+    var savedGF=localStorage.getItem('recsa_pGF');
+    var savedMOD=localStorage.getItem('recsa_pMOD');
+    var savedBACK=localStorage.getItem('recsa_pBACK');
+    var savedFecha=localStorage.getItem('recsa_gastos_fecha');
+    var gfNum=parseFloat(savedGF);
+    var modNum=parseFloat(savedMOD);
+    // Solo restaurar si AMBOS son números válidos y POSITIVOS (no ceros, no NaN)
+    if(savedGF&&savedMOD&&!isNaN(gfNum)&&!isNaN(modNum)&&gfNum>0&&modNum>0){
+      var gfEl=document.getElementById('pGF');
+      var modEl=document.getElementById('pMOD');
+      if(gfEl)gfEl.value=savedGF;
+      if(modEl)modEl.value=savedMOD;
+      var gfd=document.getElementById('pGFdisplay');
+      var modd=document.getElementById('pMODdisplay');
+      if(gfd)gfd.textContent=savedGF;
+      if(modd)modd.textContent=savedMOD;
+      // Back Office (si fue persistido)
+      var backNum=parseFloat(savedBACK);
+      if(savedBACK&&!isNaN(backNum)&&backNum>0){
+        var backEl=document.getElementById('pBACK');
+        if(backEl)backEl.value=savedBACK;
+        var backd=document.getElementById('pBACKdisplay');
+        if(backd)backd.textContent=savedBACK;
+      }
+      return savedFecha;
+    } else if(savedGF!==null||savedMOD!==null){
+      // Auto-purga: hay basura guardada (valores 0, vacíos o inválidos) → limpiar
+      localStorage.removeItem('recsa_pGF');
+      localStorage.removeItem('recsa_pMOD');
+      localStorage.removeItem('recsa_pBACK');
+      localStorage.removeItem('recsa_gastos_fecha');
+    }
+  }catch(e){}
+  return null;
+}
+function clearGastosPersisted(){
+  try{
+    localStorage.removeItem('recsa_pGF');
+    localStorage.removeItem('recsa_pMOD');
+    localStorage.removeItem('recsa_gastos_fecha');
+    // No tocar pGF/pMOD en el DOM aquí: location.reload() los volverá a su valor default del HTML
+    alert('Valores de gastos eliminados. Cargá un archivo nuevo.');
+    location.reload();
+  }catch(e){alert('Error al limpiar: '+e.message);}
+}
+function formatFechaGastos(iso){
+  if(!iso)return '';
+  try{var d=new Date(iso);return d.toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}catch(e){return iso;}
+}
+
+// ===== Gastos Operativos data (loaded from Excel) =====
+var G=[], GA={};
+var G_TC=1490, G_VOL_R=29378.5, G_VOL_V=17500;
+
+// ===== TAB SYSTEM =====
+var currentTab="resumen";
+var tabNames=[
+  {id:"resumen",label:"Resumen Ejecutivo",sec:false},
+  {id:"productos",label:"Por Producto",sec:false},
+  {id:"pricing",label:"Pricing Estratégico",sec:false},
+  {id:"alertas",label:"Alertas",sec:false},
+  {id:"simulador",label:"Simulador",sec:false},
+  {id:"unitario",label:"Vista Unitaria",sec:false},
+  {id:"inventario",label:"📦 Inventario",sec:true},
+  {id:"gastos",label:"💼 Asig. Gastos",sec:true},
+  {id:"cotizador",label:"💰 Cotizador",sec:true},
+  {id:"historico",label:"📅 Histórico Mensual",sec:true},
+  {id:"competencia",label:"🎯 Vs. Competencia",sec:true}
+];
+
+function gp(id){return parseFloat(document.getElementById(id).value)||0}
+
+// ===== P&L CALCULATIONS =====
+// HELPERS ÚNICOS — fuente de verdad de las fórmulas (evitan duplicación entre tabs)
+// IMPORTANTE: el mp del array P (de "COSTOS MP Y ENVASE") YA incluye el rendimiento,
+// por eso NO se divide por r. El campo r queda como informativo.
+function getMPME(p){ return p.mp; }                 // costo insumo (ya incluye rendimiento)
+function getCostoVar(){                              // costos variables fijos por kg (sin insumo ni imp)
+  return gp('pMOD')+gp('pFL');                       // MOD+Energía+Logística + Flete
+}
+function getCostoBase(p){                            // costo total variable de un producto (sin impuestos)
+  return getMPME(p)+gp('pMOD')+gp('pFL');
+}
+function getGastosFijosKg(){ return gp('pGF')+gp('pBACK'); }  // Fijos + Back Office
+function getEbitdaUnit(pv,p,gfKg){                   // EBITDA/kg dado un precio y un GF/kg
+  var imp=pv*(gp('pIMP')/100);
+  return pv-getMPME(p)-gp('pMOD')-imp-gp('pFL')-gfKg;
+}
+function calcPL(p){
+  var pv=p.pv, mp=p.mp, r=p.r||1;
+  var mod=gp('pMOD'), fl=gp('pFL'), gf=gp('pGF'), back=gp('pBACK');
+  var impPct=gp('pIMP')/100;
+  var imp=pv*impPct;
+  // Si falta pv real (SIN_DATO) o falta mp → no calcular CMG/EBITDA
+  var sinDato = (p.pvo==='SIN_DATO') || (mp===0);
+  // [FIX 2026-08-24] Productos de Fazón (línea "FAZON"): el cliente entrega la
+  // materia prima y la retira procesada — RECSA solo cobra el procesamiento.
+  // No corresponde cargarles Gastos Fijos, Back Office/estructura,
+  // Amortizaciones ni costo de inventario (no es materia prima propia
+  // inmovilizada). El costo que se informa en la planilla (mp) ya es el costo
+  // directo completo de producción, así que tampoco se le suma MOD/Flete
+  // (esos son promedios de planta pensados para producción propia con
+  // materia prima propia, no aplican a un servicio de maquila).
+  var esFazon = (p.l==='FAZON');
+  // [NUEVO 2026-09-02] Productos que se miden en UNIDADES, no en kilos
+  // (baldes, cinta adhesiva, kits, bolsas de resina eléctrica, etc. — ver
+  // aclaración del usuario). MOD/Flete/GF/Back Office están denominados en
+  // USD por KILOGRAMO de producto — aplicarlos a un volumen que en realidad
+  // es un conteo de unidades no tiene sentido dimensional, así que estos
+  // productos reciben el mismo tratamiento que Fazón (sin estructura), con
+  // su propio margen: Precio − Costo − Impuesto, nada más. El precio en sí
+  // sigue siendo válido (es por unidad, no por kg).
+  var esUnidad = !!p.esUnidad;
+  var sinEstructura = esFazon || esUnidad;
+  var cmg = sinDato ? null : (sinEstructura ? (pv-getMPME(p)-imp) : (pv-getMPME(p)-mod-imp-fl));
+  var cmgPct = (cmg!==null && pv>0) ? cmg/pv : null;
+  // [ACTUALIZADO 2026-09-02] A pedido: Gastos Fijos y Back Office ya NO se
+  // restan en el cálculo de EBITDA (para ningún producto, no solo Fazón/
+  // Unidad). Ahora EBITDA = CMG. Los valores de GF/kg y Back/kg siguen
+  // disponibles en el objeto devuelto (c.gf, c.back) para mostrarlos como
+  // columnas de referencia separadas, sin que afecten el cálculo.
+  var ebitda = sinDato ? null : cmg;
+  var ebitdaPct = (ebitda!==null && pv>0) ? ebitda/pv : null;
+  var am=sinEstructura ? 0 : (p.am||0);
+  var ebit = ebitda===null ? null : (ebitda-am);
+  var tna=gp('pTNA')/100;
+  var sd=p.lt+p.ss;
+  var sk=(sinEstructura||p.v<=0) ? 0 : ((p.v/365)*sd);
+  var su=sk*mp;
+  var cfi=(sinEstructura||p.v<=0) ? 0 : ((su*tna)/(p.v*365)*sd);
+  // [FIX 2026-08-24] A pedido: no se toman en cuenta las columnas H e I de
+  // master_gastos_financieros.xlsx (Financiero e Impuestos). ifin/otrosImp
+  // quedan en 0 y ya no restan del Resultado antes de Impuestos (RAI).
+  var ifin=0;
+  var otrosImp=0;
+  var rai = ebit===null ? null : (ebit-cfi);
+  var rev=pv*p.v;
+  var ebitdaAbs = (ebitda===null) ? 0 : (ebitda*p.v);
+  var cmgAbs = (cmg===null) ? 0 : (cmg*p.v);
+  return {l:p.l,p:p.p,pv:p.pv,pvo:p.pvo||'REAL',mp:mp,r:r,v:p.v,o:p.o,lt:p.lt,ss:p.ss,mod:sinEstructura?0:mod,fl:sinEstructura?0:fl,gf:sinEstructura?0:gf,back:sinEstructura?0:back,imp:imp,cmg:cmg,cmgPct:cmgPct,ebitda:ebitda,ebitdaPct:ebitdaPct,am:am,ebit:ebit,sk:sk,su:su,cfi:cfi,ifin:ifin,otrosImp:otrosImp,rai:rai,rev:rev,ebitdaAbs:ebitdaAbs,cmgAbs:cmgAbs,sinDato:sinDato,esFazon:esFazon,esUnidad:esUnidad,sinEstructura:sinEstructura};
+}
+function calcAllPL(){var r=[];for(var i=0;i<P.length;i++)r.push(calcPL(P[i]));return r;}
+// [NUEVO 2026-09-03] Códigos medidos en Unidades sin equivalencia en kg
+// conocida — se excluyen del total "Kilos Vendidos" (no tiene sentido sumar
+// unidades de cinta adhesiva o tambores como si fueran kilogramos), pero
+// mantienen su propio revenue/EBITDA normal (esos sí están bien en USD por
+// unidad). Su volumen promedio se muestra aparte, en "Promedio Unidades/mes".
+// NO incluye 5918010/5918002 — a pesar de que el archivo los etiqueta como
+// "Unidad", el usuario confirmó que esos valores ya vienen cargados en kg
+// directamente (la etiqueta "Unidad" quedó desactualizada en el archivo
+// origen, no refleja el contenido real), así que su volumen se usa tal cual,
+// sin ninguna conversión.
+var CODIGOS_EXCLUIR_KG_VENDIDOS = {'1525605':1,'1070003':1,'1070004':1,'1070005':1,'1070006':1,'9972638':1};
+function esCodigoExcluidoDeKilos(p){
+  var m=p.match(/^(\d+)/);
+  return m ? !!CODIGOS_EXCLUIR_KG_VENDIDOS[m[1]] : false;
+}
+function totalsPL(items){var rev=0,ebitda=0,cmg=0,vol=0,np=0,nn=0,ns=0;for(var i=0;i<items.length;i++){var c=items[i];rev+=c.rev;ebitda+=c.ebitdaAbs;cmg+=c.cmgAbs;
+  if(!esCodigoExcluidoDeKilos(c.p))vol+=c.v;
+  // [FIX 2026-08-24] Antes, un producto sin ventas (v=0) o sin dato de costo (ebitda=null)
+  // caía en el "else" y se contaba como "pierde", aunque nunca vendió o no hay info real.
+  // Ahora solo se clasifica rentable/pierde a lo que realmente se vendió y tiene dato.
+  if(c.v<=0||c.ebitda===null){ns++;}else if(c.ebitda>0){np++;}else{nn++;}
+}return{rev:rev,ebitda:ebitda,cmg:cmg,vol:vol,margin:rev>0?(ebitda/rev*100).toFixed(1):'0',cmgMargin:rev>0?(cmg/rev*100).toFixed(1):'0',n:items.length,np:np,nn:nn,ns:ns};}
+
+// ===== INVENTORY CALCULATIONS =====
+function calcInv(p){
+  // [FIX 2026-08-24] Antes el valor de stock usaba mp+pMOD+pFL. Corregido: el
+  // valor de stock inmovilizado se valoriza solo con el costo de materia prima
+  // (el que sale de la planilla de costos). MOD y Flete son costos operativos
+  // que ya están dentro del cálculo de Asignación de Gastos (master de gastos)
+  // y se reflejan en el P&L, no corresponde sumarlos de nuevo acá.
+  var mp=p.mp||0, tna=gp('pTNA')/100;
+  // [FIX 2026-08-24] Productos de Fazón: la materia prima es del cliente (la
+  // entrega y la retira), no de RECSA — no corresponde valorizarla como
+  // inventario propio ni cobrarle costo financiero por tenerla en planta.
+  // [NUEVO 2026-09-02] Productos "esUnidad" también se excluyen: el campo
+  // "kilos en stock" no aplica a algo que se mide en unidades, no en kg.
+  var esFazon=(p.l==='FAZON');
+  var esUnidad=!!p.esUnidad;
+  var sinInventario=esFazon||esUnidad;
+  var sk=sinInventario?0:(p.sk||0);              // kilos en stock (manual, default 0)
+  var cd=mp;                               // costo de materia prima (planilla de costos)
+  var valor=(!sinInventario&&mp>0&&sk>0)?(sk*cd):null;     // valor stock (null si falta dato)
+  var dias=(!sinInventario&&sk>0&&p.v>0)?(sk/(p.v/365)):null;  // dias de stock segun vol anual 12m
+  var cf=(valor!==null&&dias!==null)?(valor*tna*(dias/365)):null; // costo financiero
+  var cfPerKg=(cf!==null&&sk>0)?(cf/sk):null;
+  var cfPct=(cf!==null&&mp>0)?(cf/(sk*mp)):null;
+  return {sk:sk,sd:dias,su:valor||0,cfa:cf||0,cfs:cfPerKg||0,cfp:cfPct||0,valor:valor,dias:dias,cf:cf,cd:cd};
+}
+
+function fmt(n){return Math.abs(n).toLocaleString("es-AR",{maximumFractionDigits:0})}
+function fd(n){if(n===null||n===undefined)return '—';return n.toFixed(2);}
+function pct(n){if(n===null||n===undefined)return '—';return (n*100).toFixed(1)+'%';}
+
+function recalcAll(){renderContent();}
+
+function renderTabs(){
+  var h="";for(var i=0;i<tabNames.length;i++){var t=tabNames[i];var cls="tab"+(currentTab===t.id?" active":"")+(t.sec?" sec":"");h+='<div class="'+cls+'" data-tab="'+t.id+'">'+t.label+'</div>';}
+  document.getElementById("tabs").innerHTML=h;
+  var els=document.getElementById("tabs").getElementsByClassName("tab");
+  for(var j=0;j<els.length;j++)els[j].addEventListener("click",function(){currentTab=this.getAttribute("data-tab");restoreGastosPersisted();renderTabs();renderContent();});
+}
+
+function renderContent(){
+  var fn={resumen:renderResumen,productos:renderProductos,pricing:renderPricing,alertas:renderAlertas,simulador:renderSimulador,unitario:renderUnitario,inventario:renderInventario,gastos:renderGastos,cotizador:renderCotizador,historico:renderHistorico,competencia:renderCompetencia};
+  if(fn[currentTab])fn[currentTab]();
+}
+
+// ===== TAB: RESUMEN =====
+function renderResumen(){
+  var all=calcAllPL();var t=totalsPL(all);var gf=gp('pGF')+gp('pBACK');
+  var kgTotalCompleto=getKgTotalCompletoMensual(), kgOtraVia=getKgOtraViaMensual();
+  var facTotalCompleto=getFacTotalCompletoMensual(), facOtraVia=getFacOtraViaMensual();
+  // [ACTUALIZADO 2026-08-24] Facturación Vendida ahora es CARGA MANUAL (a
+  // pedido) — el Σ(precio×volumen) calculado no es una cifra certera porque
+  // muchos precios son placeholders "BREAKEVEN", no ventas reales. Si todavía
+  // no se cargó nada a mano, se usa el calculado solo como punto de partida
+  // sugerido (para no arrancar en $0), pero apenas se edita queda guardado.
+  var facVendidaManual=getFacturacionVendidaManual();
+  var facVendida=(facVendidaManual===null)?t.rev:facVendidaManual;
+  var h='<div class="kpis">';
+  h+='<div class="kpi"><div class="lb">Facturación Vendida</div><div class="vl"><input type="number" step="1" value="'+facVendida+'" oninput="setFacturacionVendida(this.value)" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--pu);padding:3px 4px;border-radius:4px;font-family:JetBrains Mono;font-size:15px;text-align:right"></div><div class="delta">USD/año — TOTAL real, agosto 2025 a julio 2026'+(facVendidaManual===null?' (sugerido, sin confirmar)':'')+'</div></div>';
+  // [ACTUALIZADO 2026-08-24] Facturación Total /mes ahora es CARGADO a mano
+  // (promedio real de 12 meses de VENTAS_MENSUALES..., columna "TOTAL
+  // COMPLETO USD"). Facturación Otra Vía pasa a CALCULADA (Total − Vendida/mes).
+  h+='<div class="kpi"><div class="lb">Facturación Total /mes</div><div class="vl"><input type="number" step="1" value="'+facTotalCompleto+'" oninput="setFacTotalCompleto(this.value)" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--pu);padding:3px 4px;border-radius:4px;font-family:JetBrains Mono;font-size:15px;text-align:right"></div><div class="delta">USD/mes — PROMEDIO real, agosto 2025 a julio 2026</div></div>';
+  h+='<div class="kpi"><div class="lb">Facturación Otra Vía</div><div class="vl" style="color:'+(facOtraVia>=0?'var(--ac)':'var(--rd)')+'">'+(facOtraVia<0?'-':'')+'USD '+fmt(Math.abs(facOtraVia))+'</div><div class="delta">= Total \u2212 Vendida/mes (calculado)</div></div>';
+  h+='<div class="kpi"><div class="lb">CMG Anual</div><div class="vl" style="color:'+(t.cmg>=0?'var(--gn)':'var(--rd)')+'">USD '+fmt(t.cmg)+'</div><div class="delta">'+t.cmgMargin+'% (sobre facturación SISTEMA)</div></div>';
+  h+='<div class="kpi"><div class="lb">EBITDA Anual</div><div class="vl" style="color:'+(t.ebitda>=0?'var(--gn)':'var(--rd)')+'">USD '+(t.ebitda<0?'-':'')+fmt(t.ebitda)+'</div><div class="delta" style="color:'+(t.ebitda>=0?'var(--gn)':'var(--rd)')+'">'+t.margin+'% (sobre fact. SISTEMA)</div></div>';
+  // [NUEVO 2026-08-24] EBITDA del Último Mes: usa el volumen REAL del último
+  // mes cargado (no el anual) junto con el precio/costo ACTUAL de cada
+  // producto — válido porque esos precios/costos representan el último mes
+  // cerrado. Requiere haber subido un archivo con formato RECSA_STOCK_VENTA.
+  var ultimoMes=calcEbitdaUltimoMes();
+  if(ultimoMes){
+    h+='<div class="kpi"><div class="lb">EBITDA Último Mes ('+ultimoMes.mes+')</div><div class="vl" style="color:'+(ultimoMes.ebitda>=0?'var(--gn)':'var(--rd)')+'">USD '+(ultimoMes.ebitda<0?'-':'')+fmt(Math.abs(ultimoMes.ebitda))+'</div><div class="delta" style="color:'+(ultimoMes.ebitda>=0?'var(--gn)':'var(--rd)')+'">'+ultimoMes.margen.toFixed(1)+'% \u2014 '+ultimoMes.matched+'/'+(ultimoMes.matched+ultimoMes.unmatched)+' productos</div></div>';
+  } else {
+    h+='<div class="kpi"><div class="lb">EBITDA Último Mes</div><div class="vl" style="font-size:11px;color:var(--t2)"><label style="cursor:pointer;color:var(--ac);text-decoration:underline">📤 Cargar archivo<input type="file" accept=".xlsx,.xls" onchange="cargarVentasUltimoMes(this)" style="display:none"></label></div><div class="delta">Mismo formato que RECSA_STOCK_VENTA</div></div>';
+  }
+  // [ACTUALIZADO 2026-08-24] Kilos Vendidos = SISTEMA (lo identificado por
+  // producto en el dashboard). Kilos Totales = CARGADO a mano (promedio real
+  // de 12 meses, ago'25-jul'26, de RECSA_STOCK_VENTA..., fila "TOTAL
+  // COMPLETO"). Kilos Otra Vía = CALCULADO como Totales − Vendidos/mes — ya
+  // no se carga a mano, se deriva solo.
+  h+='<div class="kpi"><div class="lb">Kilos Vendidos</div><div class="vl">'+fmt(t.vol)+' kg</div><div class="delta">'+fmt(t.vol/12)+' kg/mes (\u00f7 12) \u2014 SISTEMA (por producto)</div></div>';
+  // [NUEVO 2026-09-03] "Promedio Unidades /mes": productos medidos en Unidad
+  // sin equivalencia en kg conocida (excluidos de "Kilos Vendidos" — ver
+  // totalsPL). Carga manual, precargado con el promedio real de 12 meses.
+  var promUnidades=getPromedioUnidadesMensual();
+  h+='<div class="kpi"><div class="lb">Promedio Unidades /mes</div><div class="vl"><input type="number" step="0.01" value="'+promUnidades+'" oninput="setPromedioUnidades(this.value)" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--pu);padding:3px 4px;border-radius:4px;font-family:JetBrains Mono;font-size:15px;text-align:right"></div><div class="delta" title="1525605 + 1070003 + 1070004 + 1070005 + 1070006 + 9972638">unidades/mes \u2014 sin equivalencia en kg (excluidas de Kilos Vendidos)</div></div>';
+  h+='<div class="kpi"><div class="lb">Kilos Totales /mes</div><div class="vl"><input type="number" step="1" value="'+kgTotalCompleto+'" oninput="setKgTotalCompleto(this.value)" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--pu);padding:3px 4px;border-radius:4px;font-family:JetBrains Mono;font-size:15px;text-align:right"></div><div class="delta">kg/mes — PROMEDIO real, septiembre 2025 a agosto 2026</div></div>';
+  h+='<div class="kpi"><div class="lb">Kilos Otra Vía</div><div class="vl" style="color:'+(kgOtraVia>=0?'var(--ac)':'var(--rd)')+'">'+(kgOtraVia<0?'-':'')+fmt(Math.abs(kgOtraVia))+' kg</div><div class="delta">= Totales \u2212 Vendidos/mes (calculado)</div></div>';
+  h+='<div class="kpi"><div class="lb">Gastos Fijos</div><div class="vl warn">USD '+fd(gf)+'/kg</div><div class="delta">'+t.np+' rent / '+t.nn+' pierde / '+t.ns+' s/venta</div></div>';
+  h+='<div class="kpi"><div class="lb">EBITDA/kg</div><div class="vl" style="color:'+(t.ebitda>=0?'var(--gn)':'var(--rd)')+'">USD '+fd(t.vol>0?t.ebitda/t.vol:0)+'</div></div></div>';
+  h+='<p style="color:var(--t2);font-size:11px;margin-top:-8px;margin-bottom:16px">ℹ️ <b>Facturación Vendida</b>: carga manual, TOTAL real de agosto 2025 a julio 2026 (del sistema contable). <b>Facturación Total /mes</b>: carga manual, PROMEDIO real de agosto 2025 a julio 2026 (incluye todo: sistema + otra vía). <b>Facturación Otra Vía</b>: la diferencia entre ambas (Total − Vendida/mes) — se calcula sola, no se carga. <b>Kilos Vendidos</b>: lo que identificamos por producto en este dashboard (SISTEMA), tomado exclusivamente de RECSA_STOCK_VENTA_SEPT_25_A_AGOSTO_26 — excluye los códigos medidos en Unidad sin equivalencia en kg (ver "Promedio Unidades" abajo). <b>Promedio Unidades /mes</b>: productos que se miden en unidades sin un contenido en kg definido (cinta adhesiva, bolsas de resina eléctrica, trabajos para terceros) — no se suman a Kilos Vendidos porque mezclar unidades tan distintas como si fueran kilos no tiene sentido. <b>Kilos Totales</b>: el volumen real completo de la empresa, cargado a mano, PROMEDIO real de septiembre 2025 a agosto 2026. <b>Kilos Otra Vía</b>: la diferencia entre ambos — se calcula solo. "Kilos Totales" es lo que se usa para diluir Gastos Fijos/Back Office/MOD por kg sobre el volumen real de planta. <b>EBITDA Último Mes</b>: usa el volumen real de ese mes (no el anual) con el precio/costo actual de cada producto — solo cubre los productos que se pueden cruzar por código+tamaño con el archivo cargado. CMG, EBITDA Anual y sus % de margen se calculan solo con la facturación SISTEMA (por producto), no con los valores manuales de Facturación.</p>';
+  if(ultimoMes){
+    h+='<p style="color:var(--t2);font-size:10px;margin-top:-10px;margin-bottom:16px">📁 Último mes cargado: <b>'+ultimoMes.mes+'</b> (archivo: '+ultimoMes.archivo+') — <label style="cursor:pointer;color:var(--ac);text-decoration:underline">reemplazar archivo<input type="file" accept=".xlsx,.xls" onchange="cargarVentasUltimoMes(this)" style="display:none"></label></p>';
+  }
+
+  var winners=all.filter(function(c){return c.ebitda>0&&c.v>0}).sort(function(a,b){return b.ebitdaAbs-a.ebitdaAbs}).slice(0,10);
+  var losers=all.filter(function(c){return c.ebitda<0&&c.v>0}).sort(function(a,b){return a.ebitdaAbs-b.ebitdaAbs}).slice(0,10);
+  // [NUEVO 2026-09-02] Aclaración de cómo se arma este ranking: el ORDEN es
+  // por EBITDA total en USD (EBITDA/kg × Volumen) — no por el % de margen —
+  // así que un producto de margen alto pero bajo volumen puede quedar más
+  // abajo que uno de margen más chico pero volumen grande. La columna
+  // "Margen" es el % de ESE producto en particular (EBITDA/kg ÷ Precio),
+  // independiente del ranking. EBITDA acá = CMG (sin GF/Back Office).
+  h+='<p style="color:var(--t2);font-size:11px;margin-bottom:10px">ℹ️ El orden de estos rankings es por <b>EBITDA total en USD</b> (EBITDA/kg × Volumen), no por el % de margen — un producto de margen alto pero bajo volumen puede quedar más abajo que uno de margen menor pero volumen grande. La columna "Margen" muestra el % de cada producto individualmente (EBITDA/kg ÷ Precio). EBITDA acá = CMG, sin Gastos Fijos ni Back Office.</p>';
+  h+='<div class="row"><div class="card"><h3>Top 10 Ganadores</h3><table><thead><tr><th>Producto</th><th style="text-align:right">EBITDA USD</th><th>Margen</th><th>Vol</th></tr></thead><tbody>';
+  for(var i=0;i<winners.length;i++){var c=winners[i];h+='<tr><td style="font-weight:500">'+c.p+'</td><td class="mono pos" style="text-align:right">'+fmt(c.ebitdaAbs)+'</td><td class="mono pos">'+pct(c.ebitdaPct)+'</td><td class="mono">'+fmt(c.v)+'</td></tr>';}
+  h+='</tbody></table></div>';
+  h+='<div class="card"><h3>Top 10 con Pérdida</h3><table><thead><tr><th>Producto</th><th style="text-align:right">Pérdida USD</th><th>Margen</th><th>Vol</th></tr></thead><tbody>';
+  for(var i=0;i<losers.length;i++){var c=losers[i];h+='<tr><td style="font-weight:500">'+c.p+'</td><td class="mono neg" style="text-align:right">('+fmt(c.ebitdaAbs)+')</td><td class="mono neg">'+pct(c.ebitdaPct)+'</td><td class="mono">'+fmt(c.v)+'</td></tr>';}
+  h+='</tbody></table></div></div>';
+
+  document.getElementById("content").innerHTML=h;
+}
+
+// ===== TAB: PRODUCTOS =====
+function renderProductos(){
+  var lineSet={};for(var i=0;i<P.length;i++)lineSet[P[i].l]=1;var lks=Object.keys(lineSet).sort();
+  var h='<div class="card full"><h3>P&L Detallado por Producto</h3><div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">';
+  h+='<select id="sort-p" onchange="doFP()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px"><option value="revenue">Por Revenue</option><option value="ebitda">Por EBITDA</option><option value="margin">Por Margen</option><option value="vol">Por Volumen</option></select>';
+  h+='<select id="filter-l" onchange="doFP()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px"><option value="ALL">Todas</option>';
+  for(var i=0;i<lks.length;i++)h+='<option>'+lks[i]+'</option>';
+  h+='</select><input id="search-p" placeholder="Buscar..." oninput="doFP()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px;flex:1;min-width:120px"></div>';
+  // [ACTUALIZADO 2026-09-02] A pedido: Gastos Fijos y Back Office ya NO
+  // forman parte del cálculo de EBITDA (ver calcPL) — se sacó el selector de
+  // método de asignación (ya no tenía sentido, EBITDA no varía con eso) y en
+  // su lugar se agregaron dos columnas de referencia (GF/kg, Back/kg) en la
+  // tabla, que muestran el valor pero no afectan ningún cálculo.
+  h+='<p style="color:var(--t2);font-size:11px;margin-bottom:10px">ℹ️ EBITDA acá = CMG (Precio − Materia Prima − MOD − Flete − Impuesto). Gastos Fijos y Back Office se muestran como columnas de referencia, sin restar del EBITDA.</p>';
+  h+='<div id="prod-tbl" style="max-height:calc(100vh - 320px);overflow-y:auto"></div></div>';
+  document.getElementById("content").innerHTML=h;doFP();
+}
+function doFP(){
+  var all=calcAllPL();var fl=document.getElementById("filter-l").value;var fs=document.getElementById("search-p").value.toLowerCase();var so=document.getElementById("sort-p").value;
+  var items=all.filter(function(c){if(fl!=="ALL"&&c.l!==fl)return false;if(fs&&(c.p+c.l).toLowerCase().indexOf(fs)<0)return false;return true;});
+  if(so==="revenue")items.sort(function(a,b){return b.rev-a.rev});else if(so==="ebitda")items.sort(function(a,b){return b.ebitdaAbs-a.ebitdaAbs});else if(so==="margin")items.sort(function(a,b){return b.ebitdaPct-a.ebitdaPct});else items.sort(function(a,b){return b.v-a.v});
+  var h='<table><thead><tr><th>Producto</th><th style="text-align:right">Precio</th><th style="text-align:right">MP</th><th style="text-align:right">CMG</th><th>CMG%</th><th style="text-align:right">EBITDA</th><th>EBITDA%</th><th style="text-align:right;color:var(--t2)" title="Referencia — no resta del EBITDA">GF/kg</th><th style="text-align:right;color:var(--t2)" title="Referencia — no resta del EBITDA">Back/kg</th><th style="text-align:right">Revenue</th><th>Vol</th><th>Status</th></tr></thead><tbody>';
+  for(var i=0;i<items.length;i++){var c=items[i];
+  // [FIX 2026-08-24] Antes, un producto sin venta (v=0) o sin dato de costo (ebitda=null)
+  // se pintaba igual que una pérdida real (rojo + tag "X"). Ahora se distingue con un
+  // tag neutro, porque no vender o no tener dato no es lo mismo que perder plata.
+  var sinVentaODato = (c.v<=0 || c.ebitda===null);
+  var ec = sinVentaODato ? 'var(--t2)' : (c.ebitdaPct>0.1?'var(--gn)':c.ebitdaPct>0?'var(--or)':'var(--rd)');
+  var tag = sinVentaODato ? (c.ebitda===null?'<span class="tag" style="background:rgba(136,153,180,.15);color:var(--t2)">S/DATO</span>':'<span class="tag" style="background:rgba(136,153,180,.15);color:var(--t2)">S/VENTA</span>') : (c.ebitda>0?(c.ebitdaPct>0.1?'<span class="tag tag-ok">OK</span>':'<span class="tag tag-warn">!!</span>'):'<span class="tag tag-bad">X</span>');
+  if(c.esUnidad)tag+=' <span class="tag" style="background:rgba(136,153,180,.15);color:var(--t2)" title="Se mide en unidades, no en kilos — no lleva MOD/Flete/GF/Back Office">UNIDAD</span>';
+  if(c.esFazon)tag+=' <span class="tag" style="background:rgba(136,153,180,.15);color:var(--t2)" title="Fazón — el cliente entrega la materia prima, no lleva MOD/Flete/GF/Back Office">FAZON</span>';
+  h+='<tr><td style="font-weight:500">'+c.p+'</td><td class="mono" style="text-align:right;'+(c.pvo==="BREAKEVEN"?"color:var(--t2);font-style:italic":"")+'">'+fd(c.pv)+(c.pvo==="BREAKEVEN"?" <span style=\"font-size:10px;color:var(--or)\">BE</span>":"")+'</td><td class="mono" style="text-align:right">'+fd(c.mp)+'</td><td class="mono" style="text-align:right;color:'+ec+'">'+fd(c.cmg)+'</td><td class="mono" style="color:'+ec+'">'+pct(c.cmgPct)+'</td><td class="mono" style="text-align:right;color:'+ec+'">'+fd(c.ebitda)+'</td><td class="mono" style="color:'+ec+'">'+pct(c.ebitdaPct)+'</td><td class="mono" style="text-align:right;color:var(--t2)">'+fd(c.gf)+'</td><td class="mono" style="text-align:right;color:var(--t2)">'+fd(c.back)+'</td><td class="mono" style="text-align:right">'+fmt(c.rev)+'</td><td class="mono">'+fmt(c.v)+'</td><td>'+tag+'</td></tr>';}
+  h+='</tbody></table>';document.getElementById("prod-tbl").innerHTML=h;
+}
+
+// ===== TAB: PRICING ESTRATEGICO =====
+function renderPricing(){
+  var all=calcAllPL();var mod=gp('pMOD'),fl=gp('pFL'),impPct=gp('pIMP')/100;
+  var lineSet={};for(var i=0;i<P.length;i++)lineSet[P[i].l]=1;var lks=Object.keys(lineSet).sort();
+  var h='<div class="card full"><h3>Pricing Estratégico</h3><p style="color:var(--t2);font-size:12px;margin-bottom:12px">CMG 20% | 30% | 40% | 50% | Breakeven (todos los costos)</p>';
+  h+='<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><select id="pr-l" onchange="doFPR()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px"><option value="ALL">Todas</option>';
+  for(var i=0;i<lks.length;i++)h+='<option>'+lks[i]+'</option>';
+  h+='</select><select id="pr-st" onchange="doFPR()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px"><option value="ALL">Todos</option><option value="BAJO">< Breakeven</option><option value="OK">≥ Breakeven</option></select>';
+  h+='<input id="pr-s" placeholder="Buscar..." oninput="doFPR()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px;flex:1">';
+  h+='<button class="btn-sm" style="background:#87CEEB;color:#000;border-color:#87CEEB;font-weight:600" onclick="exportPricingPDF()">📄 Exportar PDF</button><button class="btn-sm" style="background:var(--gn);color:#000;border-color:var(--gn);font-weight:600" onclick="exportVentasPDF()">📄 PDF Ventas</button></div>';
+  // [ACTUALIZADO 2026-09-02] A pedido: Gastos Fijos y Back Office ya NO
+  // forman parte del cálculo de EBITDA/Breakeven — se sacó el selector de
+  // método de asignación (ya no aplica) y se agregaron GF/kg y Back/kg como
+  // columnas de referencia en la tabla.
+  h+='<p style="color:var(--t2);font-size:11px;margin-bottom:10px">ℹ️ <b>Breakeven</b> = punto de equilibrio COMPLETO, con TODOS los costos incluidos: (Materia Prima + MOD + Flete + Gastos Fijos + Back Office + Financiero + Otros Impuestos) / (1 − Impuesto sobre venta). <b>CMG 20% / 30% / 40% / 50%</b> = precio necesario para lograr ese margen de contribución exacto, usando la base sin estructura (Materia Prima + MOD + Flete) — GF/kg y Back/kg quedan igual como columnas de referencia.</p>';
+  if(typeof jspdf==='undefined'||typeof jspdf.jsPDF!=='function'){
+    h+='<div class="alert-box" style="margin-bottom:12px"><h4>⚠️ Exportar a PDF no está disponible ahora</h4><p>La librería jsPDF no cargó (necesita internet la primera vez que se abre este archivo, o el navegador bloqueó la descarga por abrirse con doble clic). Los botones de arriba no van a funcionar hasta recargar con conexión. Podés usar Ctrl+P / Imprimir como alternativa mientras tanto.</p></div>';
+  }
+  h+='<div id="pr-tbl" style="max-height:calc(100vh - 340px);overflow-y:auto;overflow-x:auto"></div></div>';
+  var hayFazon=false,hayUnidad=false;for(var i=0;i<all.length;i++){if(all[i].esFazon)hayFazon=true;if(all[i].esUnidad)hayUnidad=true;}
+  if(hayFazon||hayUnidad)h+='<p style="color:var(--t2);font-size:11px;margin-top:8px">ℹ️ Los productos de Fazón y los que se miden en Unidades (no kilos) sí se incluyen en esta tabla (marcados con su etiqueta correspondiente), pero sin MOD/Flete en su Breakeven tampoco (ver puntos 18 y 49 del historial de cambios). Los productos sin costo de materia prima cargado no se incluyen, porque sin ese dato no se puede calcular ningún escenario de precio.</p>';
+  var kh='<div class="kpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px">';
+  kh+='<div class="kpi"><div class="lb">Bajo Breakeven</div><div class="vl neg" id="pr-kpi-bajo">0</div></div>';
+  kh+='<div class="kpi"><div class="lb">Sobre Breakeven</div><div class="vl pos" id="pr-kpi-sobre">0</div></div>';
+  kh+='<div class="kpi"><div class="lb">Gap anual USD</div><div class="vl neg" id="pr-kpi-gap">USD 0</div></div></div>';
+  document.getElementById("content").innerHTML=kh+h;doFPR();
+}
+// Recalcula los 3 KPIs de arriba (Bajo/Sobre Breakeven, Gap) — se llama desde
+// doFPR() en cada cambio de filtro, para que quede consistente con la tabla.
+// [ACTUALIZADO 2026-09-03] A pedido: el Breakeven ahora es COMPLETO — incluye
+// TODOS los costos: Materia Prima + MOD + Flete + Gastos Fijos + Back Office
+// + Financiero + Otros Impuestos. Es el punto de equilibrio real de la
+// empresa, sin dejar afuera ningún concepto de gasto.
+function updatePricingKPIs(all,mod,fl,gf,back,fin,otrosImp,impPct){
+  var nB=0,nA=0,tG=0;for(var i=0;i<all.length;i++){var c=all[i];if(c.v<=0||c.mp<=0)continue;
+    var pBE=c.sinEstructura?(c.mp/(1-impPct)):((c.mp+mod+fl+gf+back+fin+otrosImp)/(1-impPct));
+    if(c.pv<pBE){nB++;tG+=(pBE-c.pv)*c.v;}else nA++;}
+  var elB=document.getElementById('pr-kpi-bajo'),elA=document.getElementById('pr-kpi-sobre'),elG=document.getElementById('pr-kpi-gap');
+  if(elB)elB.textContent=nB; if(elA)elA.textContent=nA; if(elG)elG.textContent='USD '+fmt(tG);
+}
+function doFPR(){
+  var all=calcAllPL();var fl_v=document.getElementById("pr-l").value;var st=document.getElementById("pr-st").value;var fs=document.getElementById("pr-s").value.toLowerCase();
+  var mod=gp('pMOD'),fl=gp('pFL'),gf=gp('pGF'),back=gp('pBACK'),fin=gp('pFIN'),otrosImp=gp('pOTROSIMP'),impPct=gp('pIMP')/100;
+  updatePricingKPIs(all,mod,fl,gf,back,fin,otrosImp,impPct);
+  var items=[];for(var i=0;i<all.length;i++){var c=all[i];
+  // [FIX 2026-08-24] A pedido: FAZON SÍ se incluye en la lista de precios
+  // (antes se excluía), pero con su propia fórmula de breakeven — no lleva
+  // MOD/Flete/GF/Back, solo costo MP + impuesto (ver punto 18). Los productos
+  // SIN costo cargado (mp<=0) se excluyen, porque sin ese dato los escenarios
+  // de precio no se pueden calcular con sentido.
+  if(c.mp<=0)continue;
+  if(fl_v!=="ALL"&&c.l!==fl_v)continue;if(fs&&(c.p+c.l).toLowerCase().indexOf(fs)<0)continue;
+  var pBE, pCMG20, pCMG30, pCMG40, pCMG50;
+  if(c.sinEstructura){
+    pBE=c.mp/(1-impPct);
+    pCMG20=c.mp/(1-impPct-0.20); pCMG30=c.mp/(1-impPct-0.30); pCMG40=c.mp/(1-impPct-0.40); pCMG50=c.mp/(1-impPct-0.50);
+  } else {
+    pBE=(c.mp+mod+fl+gf+back+fin+otrosImp)/(1-impPct);
+    pCMG20=(c.mp+mod+fl)/(1-impPct-0.20); pCMG30=(c.mp+mod+fl)/(1-impPct-0.30); pCMG40=(c.mp+mod+fl)/(1-impPct-0.40); pCMG50=(c.mp+mod+fl)/(1-impPct-0.50);
+  }
+  if(st==="BAJO"&&c.pv>=pBE)continue;if(st==="OK"&&c.pv<pBE)continue;
+  // [ACTUALIZADO 2026-09-02] A pedido: se reemplazaron las columnas +20/+30/
+  // +40 (Breakeven-sin-estructura × 1.2/1.3/1.4) por CMG 30%/40%/50% — mismo
+  // criterio que CMG 20% (Materia Prima + MOD + Flete, sin GF/Back), pero
+  // apuntando a un margen de contribución objetivo distinto en cada una.
+  var cmg20, cmg30, cmg40, cmg50;
+  if(c.sinEstructura){
+    cmg20=pCMG20-c.mp-pCMG20*impPct;
+    cmg30=pCMG30-c.mp-pCMG30*impPct;
+    cmg40=pCMG40-c.mp-pCMG40*impPct;
+    cmg50=pCMG50-c.mp-pCMG50*impPct;
+  } else {
+    cmg20=pCMG20-c.mp-mod-pCMG20*impPct-fl;
+    cmg30=pCMG30-c.mp-mod-pCMG30*impPct-fl;
+    cmg40=pCMG40-c.mp-mod-pCMG40*impPct-fl;
+    cmg50=pCMG50-c.mp-mod-pCMG50*impPct-fl;
+  }
+  items.push({l:c.l,p:c.p,pv:c.pv,ebitda:c.ebitda,gf:c.gf,back:c.back,fin:c.sinEstructura?0:fin,otrosImp:c.sinEstructura?0:otrosImp,pBE:pBE,pCMG20:pCMG20,cmg20:cmg20,pCMG30:pCMG30,cmg30:cmg30,pCMG40:pCMG40,cmg40:cmg40,pCMG50:pCMG50,cmg50:cmg50,gap:c.pv-pBE,v:c.v,esFazon:c.esFazon,esUnidad:c.esUnidad});}
+  items.sort(function(a,b){return a.gap-b.gap});
+  var h='<div style="overflow-x:auto"><table style="min-width:1650px"><thead><tr><th>Producto</th><th style="text-align:right">P.Actual</th><th style="text-align:right">EBITDA Act</th><th style="text-align:right;color:var(--ac)">P.CMG20%</th><th style="text-align:right;color:var(--ac)">CMG 20%</th><th style="text-align:right;color:var(--or)">Breakeven</th><th style="text-align:right;color:var(--gn)">P.CMG30%</th><th style="text-align:right;color:var(--gn)">CMG 30%</th><th style="text-align:right;color:var(--gn)">P.CMG40%</th><th style="text-align:right;color:var(--gn)">CMG 40%</th><th style="text-align:right;color:var(--gn)">P.CMG50%</th><th style="text-align:right;color:var(--gn)">CMG 50%</th><th style="text-align:right">Gap</th><th style="text-align:right;color:var(--t2)" title="Ya incluido en el Breakeven">GF/kg</th><th style="text-align:right;color:var(--t2)" title="Ya incluido en el Breakeven">Back/kg</th><th style="text-align:right;color:var(--t2)" title="Ya incluido en el Breakeven">Fin/kg</th><th style="text-align:right;color:var(--t2)" title="Ya incluido en el Breakeven">Otros Imp/kg</th><th>Vol</th><th>Status</th></tr></thead><tbody>';
+  for(var i=0;i<items.length;i++){var c=items[i];var gc=c.gap>=0?'var(--gn)':'var(--rd)';var tag=c.pv>=c.pCMG50?'<span class="tag tag-ok">≥CMG50</span>':c.pv>=c.pCMG40?'<span class="tag tag-ok">≥CMG40</span>':c.pv>=c.pCMG30?'<span class="tag tag-ok">≥CMG30</span>':c.pv>=c.pCMG20?'<span class="tag tag-ok">≥CMG20</span>':c.gap>=0?'<span class="tag tag-warn">≥BE</span>':'<span class="tag tag-bad">BAJO</span>';var rb=c.gap<0?'background:rgba(255,77,106,.04);':'';var extraTag=c.esFazon?' <span class="tag" style="background:rgba(136,153,180,.15);color:var(--t2)">FAZON</span>':(c.esUnidad?' <span class="tag" style="background:rgba(136,153,180,.15);color:var(--t2)">UNIDAD</span>':'');
+  h+='<tr style="'+rb+'"><td style="font-weight:500">'+c.p+extraTag+'</td><td class="mono" style="text-align:right">'+fd(c.pv)+'</td><td class="mono" style="text-align:right;color:'+(c.ebitda>=0?'var(--gn)':'var(--rd)')+'">'+fd(c.ebitda)+'</td><td class="mono" style="text-align:right;color:var(--or);font-weight:600">'+fd(c.pCMG20)+'</td><td class="mono" style="text-align:right;color:var(--ac)">'+fd(c.cmg20)+'</td><td class="mono" style="text-align:right;color:var(--or);font-weight:600">'+fd(c.pBE)+'</td><td class="mono" style="text-align:right;color:var(--gn)">'+fd(c.pCMG30)+'</td><td class="mono" style="text-align:right;color:var(--gn)">'+fd(c.cmg30)+'</td><td class="mono" style="text-align:right;color:var(--gn)">'+fd(c.pCMG40)+'</td><td class="mono" style="text-align:right;color:var(--gn)">'+fd(c.cmg40)+'</td><td class="mono" style="text-align:right;color:var(--gn)">'+fd(c.pCMG50)+'</td><td class="mono" style="text-align:right;color:var(--gn)">'+fd(c.cmg50)+'</td><td class="mono" style="text-align:right;color:'+gc+'">'+(c.gap>=0?'+':'')+fd(c.gap)+'</td><td class="mono" style="text-align:right;color:var(--t2)">'+fd(c.gf)+'</td><td class="mono" style="text-align:right;color:var(--t2)">'+fd(c.back)+'</td><td class="mono" style="text-align:right;color:var(--t2)">'+fd(c.fin)+'</td><td class="mono" style="text-align:right;color:var(--t2)">'+fd(c.otrosImp)+'</td><td class="mono">'+fmt(c.v)+'</td><td>'+tag+'</td></tr>';}
+  h+='</tbody></table>';document.getElementById("pr-tbl").innerHTML=h;
+}
+
+// ===== TAB: ALERTAS =====
+function renderAlertas(){
+  var all=calcAllPL();var costGt=[],negM=[];
+  for(var i=0;i<all.length;i++){var c=all[i];if(c.mp>c.pv&&c.v>0)costGt.push(c);if(c.ebitda<0&&c.v>0)negM.push(c);}
+  negM.sort(function(a,b){return a.ebitdaAbs-b.ebitdaAbs});var tL=0;for(var i=0;i<negM.length;i++)tL+=negM[i].ebitdaAbs;
+  var h='<div class="kpis" style="grid-template-columns:repeat(3,1fr)"><div class="kpi" style="border-color:var(--rd)"><div class="lb">Costo > Precio</div><div class="vl neg">'+costGt.length+'</div></div><div class="kpi" style="border-color:var(--or)"><div class="lb">EBITDA Negativo</div><div class="vl warn">'+negM.length+'</div></div><div class="kpi"><div class="lb">Pérdida Total</div><div class="vl neg">USD '+fmt(tL)+'</div></div></div>';
+  if(costGt.length){h+='<div class="card full"><h3>COSTO MP > PRECIO</h3><table><thead><tr><th>Producto</th><th style="text-align:right">Precio</th><th style="text-align:right">Costo</th><th style="text-align:right">Dif</th><th>Vol</th></tr></thead><tbody>';for(var i=0;i<costGt.length;i++){var c=costGt[i];h+='<tr><td style="font-weight:500">'+c.p+'</td><td class="mono" style="text-align:right">'+fd(c.pv)+'</td><td class="mono neg" style="text-align:right">'+fd(c.mp)+'</td><td class="mono neg" style="text-align:right">('+fd(c.mp-c.pv)+')</td><td class="mono">'+fmt(c.v)+'</td></tr>';}h+='</tbody></table></div>';}
+  h+='<div class="card full"><h3>EBITDA NEGATIVO — Pérdida: USD '+fmt(tL)+'</h3><table><thead><tr><th>Producto</th><th style="text-align:right">Pérdida/kg</th><th style="text-align:right">Pérdida Total</th><th>Margen</th><th>Vol</th></tr></thead><tbody>';
+  for(var i=0;i<negM.length;i++){var c=negM[i];h+='<tr><td style="font-weight:500">'+c.p+'</td><td class="mono neg" style="text-align:right">'+fd(c.ebitda)+'</td><td class="mono neg" style="text-align:right">('+fmt(c.ebitdaAbs)+')</td><td class="mono neg">'+pct(c.ebitdaPct)+'</td><td class="mono">'+fmt(c.v)+'</td></tr>';}
+  h+='</tbody></table></div>';document.getElementById("content").innerHTML=h;
+}
+
+// ===== TAB: SIMULADOR =====
+function renderSimulador(){
+  var h=volSimHTML();
+  document.getElementById("content").innerHTML=h;
+  volSimOnSelect();
+}
+
+// ===== SIMULADOR DE VOLUMEN ADICIONAL (dilución de GF/kg) =====
+// [NUEVO 2026-08-24] Permite cargar un producto (existente o nuevo) con su costo
+// y un volumen adicional de producción. Ese volumen se suma al promedio mensual
+// real (getVolMensualReal()) y se recalcula el GF/kg (Gastos Fijos + Back Office)
+// con la base de kg más grande — así se ve cuánto se diluye el costo fijo por kg
+// y cómo eso mejora el EBITDA tanto del producto nuevo como de TODA la cartera
+// existente (porque el GF/kg más bajo aplica a todos los productos, no solo al nuevo).
+function volSimHTML(){
+  var opts='<option value="-1">+ Nuevo producto (no existente en la lista)</option>';
+  var all=calcAllPL();
+  for(var i=0;i<all.length;i++){opts+='<option value="'+i+'">['+all[i].l+'] '+all[i].p+'</option>';}
+  var h='<div class="card full"><h3>🔀 Simulador de Volumen Adicional — Dilución de GF/kg</h3>';
+  h+='<p style="color:var(--t2);font-size:12px;margin-bottom:12px">Elegí un producto actual o cargá uno nuevo, su costo y el volumen adicional de producción. Ese volumen se suma al promedio mensual real y diluye los Gastos Fijos + Back Office (son ARS/mes fijos) sobre una base de kg más grande — el GF/kg baja para <b>toda</b> la cartera, no solo para lo nuevo.</p>';
+  h+='<div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:10px;margin-bottom:6px">';
+  h+='<div><label style="font-size:10px;color:var(--t2);display:block;margin-bottom:3px">PRODUCTO</label><select id="vs-prod" onchange="volSimOnSelect()" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:6px;border-radius:6px;font-size:12px">'+opts+'</select></div>';
+  h+='<div><label style="font-size:10px;color:var(--t2);display:block;margin-bottom:3px">PRECIO VENTA USD/kg</label><input id="vs-precio" type="number" step="0.0001" value="0" oninput="volSimUpdate()" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--ac);padding:6px;border-radius:6px;font-family:JetBrains Mono;font-size:12px;text-align:right"></div>';
+  h+='<div><label style="font-size:10px;color:var(--t2);display:block;margin-bottom:3px">COSTO MP USD/kg</label><input id="vs-costo" type="number" step="0.0001" value="0" oninput="volSimUpdate()" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--ac);padding:6px;border-radius:6px;font-family:JetBrains Mono;font-size:12px;text-align:right"></div>';
+  h+='<div><label style="font-size:10px;color:var(--t2);display:block;margin-bottom:3px">VOL. ADICIONAL kg/año</label><input id="vs-vol" type="number" step="1" value="0" oninput="volSimUpdate()" style="width:100%;background:var(--s1);border:1px solid var(--gn);color:var(--gn);padding:6px;border-radius:6px;font-family:JetBrains Mono;font-size:12px;text-align:right;font-weight:600"></div>';
+  h+='</div>';
+  h+='<div id="vs-nombre-wrap" style="display:none;margin-bottom:14px"><label style="font-size:10px;color:var(--t2);display:block;margin-bottom:3px">NOMBRE PRODUCTO NUEVO (solo referencia)</label><input id="vs-nombre" type="text" placeholder="Ej: Nuevo desarrollo XYZ" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:6px;border-radius:6px;font-size:12px"></div>';
+  h+='<div id="vs-result" style="margin-top:10px"></div>';
+  h+='</div>';
+  return h;
+}
+function volSimOnSelect(){
+  var sel=document.getElementById('vs-prod');var idx=parseInt(sel.value);var nameWrap=document.getElementById('vs-nombre-wrap');
+  if(idx===-1){
+    nameWrap.style.display='block';
+  } else {
+    nameWrap.style.display='none';
+    var all=calcAllPL();var c=all[idx];
+    document.getElementById('vs-precio').value=c.pv.toFixed(4);
+    document.getElementById('vs-costo').value=c.mp.toFixed(4);
+  }
+  volSimUpdate();
+}
+function volSimUpdate(){
+  var precio=parseFloat(document.getElementById('vs-precio').value)||0;
+  var costo=parseFloat(document.getElementById('vs-costo').value)||0;
+  var volAdic=parseFloat(document.getElementById('vs-vol').value)||0;
+  var tc=gp('pTC')||1500;var GA=G_GASTOS_RECSA;
+  var volMensualActual=getVolMensualTotal();
+  var volMensualNuevo=volMensualActual+(volAdic/12);
+  var gfActual=GA.fijos/(tc*volMensualActual), backActual=GA.back/(tc*volMensualActual);
+  var gfNuevo=volMensualNuevo>0?GA.fijos/(tc*volMensualNuevo):gfActual;
+  var backNuevo=volMensualNuevo>0?GA.back/(tc*volMensualNuevo):backActual;
+  var gfTotalActual=gfActual+backActual, gfTotalNuevo=gfNuevo+backNuevo;
+  var reduccionPct=gfTotalActual>0?((gfTotalActual-gfTotalNuevo)/gfTotalActual*100):0;
+  var mod=gp('pMOD'),fl=gp('pFL'),impPct=gp('pIMP')/100;
+  var imp=precio*impPct;
+  var cmgNuevo=precio-costo-mod-imp-fl;
+  var ebitdaNuevoKg=cmgNuevo-gfTotalNuevo;
+  var ebitdaNuevoTotal=ebitdaNuevoKg*volAdic;
+  var t=totalsPL(calcAllPL());
+  var volExistente=t.vol;
+  var deltaGFporKg=gfTotalActual-gfTotalNuevo;
+  var impactoCartera=deltaGFporKg*volExistente;
+  var impactoTotal=ebitdaNuevoTotal+impactoCartera;
+  var nuevoEbitdaTotal=t.ebitda+impactoTotal;
+  var row=function(lb,vl,color){return '<div class="sr"><span class="lb">'+lb+'</span><span class="vl mono"'+(color?' style="color:'+color+'"':'')+'>'+vl+'</span></div>';};
+  var h='<div class="row" style="grid-template-columns:1fr 1fr">';
+  h+='<div class="card" style="background:var(--s1)"><h3 style="font-size:12px">📉 Dilución del GF/kg</h3>';
+  h+=row('Vol. mensual actual',fmt(volMensualActual)+' kg');
+  h+=row('Vol. mensual con adicional',fmt(volMensualNuevo)+' kg','var(--gn)');
+  h+=row('Vol. adicional / año',fmt(volAdic)+' kg','var(--gn)');
+  h+='<div style="border-top:1px solid var(--bd);margin:4px 0"></div>';
+  h+=row('GF + Back actual',fd(gfTotalActual)+' USD/kg');
+  h+=row('GF + Back diluido',fd(gfTotalNuevo)+' USD/kg','var(--gn)');
+  h+=row('Reducción del GF/kg',reduccionPct.toFixed(1)+'%',reduccionPct>0?'var(--gn)':'var(--t2)');
+  h+='</div>';
+  h+='<div class="card" style="background:var(--s1)"><h3 style="font-size:12px">💰 Impacto en EBITDA anual</h3>';
+  h+=row('EBITDA/kg del volumen nuevo',fd(ebitdaNuevoKg)+' USD',ebitdaNuevoKg>=0?'var(--gn)':'var(--rd)');
+  h+=row('EBITDA total del volumen nuevo','USD '+(ebitdaNuevoTotal<0?'-':'')+fmt(ebitdaNuevoTotal),ebitdaNuevoTotal>=0?'var(--gn)':'var(--rd)');
+  h+=row('+ Ahorro en cartera existente (por dilución GF)','USD '+fmt(impactoCartera),'var(--gn)');
+  h+='<div style="border-top:1px solid var(--bd);margin:4px 0"></div>';
+  h+=row('= Impacto total en EBITDA anual','USD '+(impactoTotal<0?'-':'+')+fmt(impactoTotal),impactoTotal>=0?'var(--gn)':'var(--rd)');
+  h+=row('Nuevo EBITDA anual total (compañía)','USD '+(nuevoEbitdaTotal<0?'-':'')+fmt(nuevoEbitdaTotal),nuevoEbitdaTotal>=0?'var(--gn)':'var(--rd)');
+  h+='</div></div>';
+  document.getElementById('vs-result').innerHTML=h;
+}
+
+// ===== TAB: VISTA UNITARIA =====
+function renderUnitario(){
+  var lineSet={};for(var i=0;i<P.length;i++)lineSet[P[i].l]=1;var lks=Object.keys(lineSet).sort();
+  var h='<div class="card full"><h3>P&L Unitario — Waterfall</h3><div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap"><select id="u-l" onchange="doFU()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px"><option value="ALL">Todas</option>';
+  for(var i=0;i<lks.length;i++)h+='<option>'+lks[i]+'</option>';
+  h+='</select><select id="u-st" onchange="doFU()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px"><option value="ALL">Todos</option><option value="POS">Rentables</option><option value="NEG">Pierde</option></select><input id="u-s" placeholder="Buscar..." oninput="doFU()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:5px;border-radius:6px;font-size:12px;flex:1"></div>';
+  h+='<div id="u-tbl" style="max-height:calc(100vh - 350px);overflow-y:auto"></div></div>';
+  h+='<div class="row"><div class="card" id="u-det"><h3>Detalle</h3><p style="color:var(--t2);font-size:12px">Click en un producto</p></div><div class="card" id="u-avg"></div></div>';
+  document.getElementById("content").innerHTML=h;
+  // Render avg
+  var items=calcAllPL().filter(function(c){return c.v>0});var ap=0,am=0,tv=0;for(var i=0;i<items.length;i++){ap+=items[i].pv*items[i].v;am+=items[i].mp/items[i].r*items[i].v;tv+=items[i].v;}ap/=tv;am/=tv;var gf=gp('pGF'),mod=gp('pMOD'),fl=gp('pFL'),ip=gp('pIMP')/100;var acmg=ap-am-mod-ap*ip-fl;var ae=acmg-gf;
+  var ah='<h3>Promedio Ponderado</h3><div class="sr"><span class="lb">Precio</span><span class="vl">USD '+ap.toFixed(2)+'</span></div><div class="sr"><span class="lb">(-) MP</span><span class="vl neg">'+am.toFixed(2)+'</span></div><div class="sr"><span class="lb">(-) MOD</span><span class="vl" style="color:var(--t2)">'+mod.toFixed(2)+'</span></div><div class="sr"><span class="lb">(-) Imp+Fl</span><span class="vl" style="color:var(--t2)">'+(ap*ip+fl).toFixed(2)+'</span></div><div style="border-top:1px solid var(--bd);margin:4px 0"></div><div class="sr"><span class="lb" style="font-weight:600">= CMG</span><span class="vl" style="color:'+(acmg>=0?'var(--gn)':'var(--rd)')+'">'+acmg.toFixed(2)+'</span></div><div class="sr"><span class="lb">(-) GF</span><span class="vl warn">'+gf.toFixed(2)+'</span></div><div style="border-top:2px solid var(--bd);margin:4px 0"></div><div class="sr"><span class="lb" style="font-weight:700">= EBITDA</span><span class="vl" style="color:'+(ae>=0?'var(--gn)':'var(--rd)')+';font-size:16px">USD '+ae.toFixed(2)+'</span></div>';
+  document.getElementById("u-avg").innerHTML=ah;doFU();
+}
+function doFU(){
+  var all=calcAllPL();var fl=document.getElementById("u-l").value;var st=document.getElementById("u-st").value;var fs=document.getElementById("u-s").value.toLowerCase();
+  var items=all.filter(function(c){if(fl!=="ALL"&&c.l!==fl)return false;if(st==="POS"&&c.ebitda<=0)return false;if(st==="NEG"&&c.ebitda>0)return false;if(fs&&(c.p+c.l).toLowerCase().indexOf(fs)<0)return false;return true;}).sort(function(a,b){return b.rev-a.rev;});
+  var maxP=0;for(var i=0;i<items.length;i++)if(items[i].pv>maxP)maxP=items[i].pv;var gf=gp('pGF')+gp('pBACK');
+  var h='<table><thead><tr><th>Producto</th><th style="text-align:right">Precio</th><th style="text-align:right">MP</th><th style="text-align:right">CMG</th><th style="text-align:right">EBITDA</th><th>%</th><th>Waterfall</th></tr></thead><tbody>';
+  for(var i=0;i<items.length;i++){var c=items[i];var mpr=c.mp;var bw=maxP>0?80:0;var mpW=mpr/maxP*bw;var modW=c.mod/maxP*bw;var impW=(c.imp+c.fl)/maxP*bw;var gfW=gf/maxP*bw;var eW=c.ebitda>0?c.ebitda/maxP*bw:0;var lW=c.ebitda<0?Math.min(Math.abs(c.ebitda)/maxP*bw,12):0;var ec=c.ebitdaPct>0.1?'var(--gn)':c.ebitdaPct>0?'var(--or)':'var(--rd)';
+  h+='<tr style="cursor:pointer" onclick="showUD('+i+')"><td style="font-weight:500">'+c.p+'</td><td class="mono" style="text-align:right;'+(c.pvo==="BREAKEVEN"?"color:var(--t2);font-style:italic":"")+'">'+fd(c.pv)+(c.pvo==="BREAKEVEN"?' <span style=\"font-size:10px;color:var(--or)\">BE</span>':'')+'</td><td class="mono neg" style="text-align:right">'+fd(c.mp)+'</td><td class="mono" style="text-align:right;color:'+ec+'">'+fd(c.cmg)+'</td><td class="mono" style="text-align:right;color:'+ec+'">'+fd(c.ebitda)+'</td><td class="mono" style="color:'+ec+'">'+pct(c.ebitdaPct)+'</td><td><div style="display:flex;height:8px;border-radius:2px;overflow:hidden;width:'+bw+'px;background:var(--bd)"><div style="width:'+mpW+'px;background:var(--rd);opacity:.7"></div><div style="width:'+modW+'px;background:var(--or);opacity:.7"></div><div style="width:'+impW+'px;background:var(--pu);opacity:.5"></div><div style="width:'+gfW+'px;background:var(--t2);opacity:.5"></div>'+(c.ebitda>0?'<div style="width:'+eW+'px;background:var(--gn)"></div>':'<div style="width:'+lW+'px;background:var(--rd);opacity:.3"></div>')+'</div></td></tr>';}
+  h+='</tbody></table>';document.getElementById("u-tbl").innerHTML=h;window._ui=items;
+}
+function showUD(idx){var c=window._ui[idx];var row=function(lb,vl,col,ind,bold){return '<div class="sr" style="'+(ind?'padding-left:10px':'')+'"><span class="lb"'+(bold?' style="font-weight:700"':'')+'>'+lb+'</span><span class="vl"'+(col?' style="color:'+col+'"':'')+'>'+vl+'</span></div>';};
+var h='<h3>'+c.p+'</h3><div style="font-size:11px;color:var(--t2);margin-bottom:6px">'+c.l+' · R='+c.r+' (informativo, no se aplica)</div>';
+h+=row('Precio Venta','USD '+fd(c.pv),null,false,true);
+h+=row('(-) MP+ME',fd(c.mp),'var(--t2)',true);
+h+=row('(-) MOD+Energía',fd(c.mod),'var(--t2)',true);
+h+=row('(-) Imp directo ('+gp('pIMP')+'%)',fd(c.imp),'var(--t2)',true);
+h+=row('(-) Flete',fd(c.fl),'var(--t2)',true);
+h+='<div style="border-top:2px solid var(--bd);margin:4px 0"></div>';
+h+=row('= CMG',fd(c.cmg)+' ('+(c.cmgPct*100).toFixed(0)+'%)',c.cmg>=0?'var(--gn)':'var(--rd)',false,true);
+h+=row('(-) Gastos Fijos',fd(c.gf),'var(--wn)',true);
+h+=row('(-) Back Office',fd(c.back),'var(--wn)',true);
+h+='<div style="border-top:3px solid var(--ac);margin:4px 0"></div>';
+h+='<div class="sr"><span class="lb" style="font-weight:700;font-size:14px">= EBITDA</span><span class="vl" style="color:'+(c.ebitda>=0?'var(--gn)':'var(--rd)')+';font-size:17px">USD '+fd(c.ebitda)+' ('+(c.ebitdaPct*100).toFixed(0)+'%)</span></div>';
+h+=row('(-) Amortización',fd(c.am),'var(--t2)',true);
+h+='<div style="border-top:1px solid var(--bd);margin:4px 0"></div>';
+h+=row('= EBIT',fd(c.ebit),c.ebit>=0?'var(--gn)':'var(--rd)',false,true);
+// [FIX 2026-08-24] A pedido: no se toman en cuenta Financiero ni Otros
+// Impuestos (columnas H e I de master_gastos_financieros.xlsx) en el RAI.
+h+=row('(-) CF Inventario',fd(c.cfi),'var(--t2)',true);
+h+='<div style="border-top:1px solid var(--bd);margin:4px 0"></div>';
+h+=row('= Result. a/Imp',fd(c.rai),c.rai>=0?'var(--gn)':'var(--rd)',false,true);
+h+='<div style="border-top:1px solid var(--bd);margin:6px 0"></div>';
+h+=row('Vol',fmt(c.v)+' kg',null);
+h+='<div class="sr"><span class="lb">EBITDA anual</span><span class="vl" style="color:'+(c.ebitdaAbs>=0?'var(--gn)':'var(--rd)')+'">USD '+(c.ebitdaAbs<0?'-':'')+fmt(c.ebitdaAbs)+'</span></div>';
+if(c.ebitda<0)h+='<div style="margin-top:6px;padding:6px;background:rgba(255,77,106,.1);border-radius:6px;font-size:11px;color:var(--rd)">Breakeven: USD '+fd(c.pv-c.ebitda)+'/kg</div>';
+document.getElementById("u-det").innerHTML=h;}
+
+// ===== TAB: INVENTARIO =====
+function renderInventario(){
+  var tna=gp('pTNA')/100;var tc=gp('pTC');
+  var tsu=0,tcf=0,nc=0;
+  for(var i=0;i<P.length;i++){var c=calcInv(P[i]);if(c.valor!==null)tsu+=c.valor;if(c.cf!==null)tcf+=c.cf;if((P[i].sk||0)>0)nc++;}
+  var totalV=P.reduce(function(a,b){return a+(b.v||0)},0);
+  var cpk=totalV>0?tcf/totalV:0;
+  var h='<div class="kpis" style="grid-template-columns:repeat(5,1fr)">';
+  h+='<div class="kpi"><div class="lb">Stock Inmovilizado</div><div class="vl warn">USD '+fmt(tsu)+'</div></div>';
+  h+='<div class="kpi"><div class="lb">CF Anual</div><div class="vl neg">USD '+fmt(tcf)+'</div></div>';
+  h+='<div class="kpi"><div class="lb">CF Promedio/kg</div><div class="vl neg">USD '+fd(cpk)+'</div></div>';
+  h+='<div class="kpi"><div class="lb">CF Mensual ARS</div><div class="vl neg">ARS '+fmt(tcf/12*tc)+'</div></div>';
+  h+='<div class="kpi"><div class="lb">Con Stock</div><div class="vl">'+nc+'/'+P.length+'</div></div></div>';
+  h+='<div class="card full"><h3>Inventario por Producto</h3><p style="color:var(--t2);font-size:11px;margin-bottom:10px">Kilos en stock se cargan via Excel de Costo Financiero (cuando este disponible). Valor de stock = kg en stock x costo de materia prima (planilla de costos). MOD y Flete son costos operativos ya contemplados en Asignacion de Gastos, no se suman de nuevo aqui. Dias en base a vol movil 12m. CF anual usa TNA actual ('+gp('pTNA')+'%).</p>';
+  h+='<div id="inv-tbl" style="max-height:calc(100vh - 340px);overflow-y:auto"></div></div>';
+  document.getElementById("content").innerHTML=h;renderInvTbl();
+}
+
+
+function renderInvTbl(){
+  var h='<table><thead><tr><th>Producto</th><th style="text-align:right">Kg Stock</th><th style="text-align:right">Costo MP USD/kg</th><th style="text-align:right">Valor USD</th><th style="text-align:right">Vol anual kg</th><th style="text-align:right">Dias</th><th style="text-align:right">CF Anual USD</th></tr></thead><tbody>';
+  for(var i=0;i<P.length;i++){
+    var s=P[i],c=calcInv(s);
+    var fmtN=function(v){return v===null?'—':fmt(v);};
+    var fdN=function(v){return v===null?'—':fd(v);};
+    var fmtD=function(v){return v===null?'—':Math.round(v).toLocaleString('es-AR');};
+    h+='<tr><td style="font-weight:500;font-size:12px">'+s.p+'</td>';
+    h+='<td class="mono" style="text-align:right;font-size:12px">'+fmt(s.sk||0)+'</td>';
+    h+='<td class="mono" style="text-align:right;font-size:12px">'+(s.mp>0?fd(c.cd):'—')+'</td>';
+    h+='<td class="mono warn" style="text-align:right;font-size:12px">'+fmtN(c.valor)+'</td>';
+    h+='<td class="mono" style="text-align:right;font-size:12px">'+fmt(s.v)+'</td>';
+    h+='<td class="mono" style="text-align:right;font-size:12px">'+fmtD(c.dias)+'</td>';
+    h+='<td class="mono neg" style="text-align:right;font-size:12px">'+fmtN(c.cf)+'</td></tr>';
+  }
+  h+='</tbody></table>';document.getElementById("inv-tbl").innerHTML=h;
+}
+
+
+function uiInv(i,f,val){P[i][f]=parseInt(val);renderInventario();}
+
+
+// ===== TAB: COTIZADOR =====
+window._cotState = {productoP_idx: -1, volMensual: 1000, precio: 0};
+
+function renderCotizador(){
+  // Si nunca se eligió producto, tomar el primero ordenado
+  if(window._cotState.productoP_idx < 0){
+    var sorted = P.slice().sort(function(a,b){
+      if(a.l < b.l) return -1;
+      if(a.l > b.l) return 1;
+      return a.p < b.p ? -1 : 1;
+    });
+    var prod0 = sorted[0];
+    for(var k=0;k<P.length;k++) if(P[k] === prod0) {window._cotState.productoP_idx = k; break;}
+  }
+  
+  // Construir lista de líneas para el filtro
+  var lineSet = {};
+  for(var i=0;i<P.length;i++) lineSet[P[i].l] = 1;
+  var lks = Object.keys(lineSet).sort();
+  
+  var h = '<div class="card full"><h2 style="color:var(--ac);margin-bottom:16px">💰 Cotizador — Cotización por Volumen</h2>';
+  h += '<p style="color:var(--t2);margin-bottom:24px;font-size:14px">Calculá el precio óptimo para un cliente nuevo, considerando que su volumen mejora la absorción de gastos fijos.</p>';
+  
+  // ============ Sección 1: Producto a cotizar (con buscador) ============
+  h += '<div style="background:#0f1419;border-radius:8px;padding:20px;margin-bottom:16px;border:1px solid var(--bd)">';
+  h += '<div style="color:var(--ac);font-weight:600;margin-bottom:12px;font-size:14px">1. PRODUCTO A COTIZAR</div>';
+  
+  // Filtros (línea + búsqueda)
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+  h += '<select id="cot-l" onchange="cotDoFiltro()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:6px;border-radius:6px;font-size:13px"><option value="ALL">Todas las líneas</option>';
+  for(var i=0;i<lks.length;i++) h+='<option>'+lks[i]+'</option>';
+  h += '</select>';
+  h += '<input id="cot-s" placeholder="Buscar producto..." oninput="cotDoFiltro()" style="background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:6px;border-radius:6px;font-size:13px;flex:1;min-width:200px">';
+  h += '</div>';
+  
+  // Lista filtrada de productos
+  h += '<div id="cot-tbl" style="max-height:240px;overflow-y:auto;border:1px solid var(--bd);border-radius:6px;background:var(--c1)"></div>';
+  
+  // Info del producto seleccionado
+  h += '<div id="cotProductoInfo" style="margin-top:12px;font-size:13px;color:var(--t2)"></div>';
+  h += '</div>';
+  
+  // ============ Sección 2: Escenario del cliente ============
+  h += '<div style="background:#0f1419;border-radius:8px;padding:20px;margin-bottom:16px;border:1px solid var(--bd)">';
+  h += '<div style="color:var(--ac);font-weight:600;margin-bottom:12px;font-size:14px">2. ESCENARIO DEL CLIENTE</div>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">';
+  h += '<div>';
+  h += '<label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Volumen del cliente (kg/mes)</label>';
+  h += '<input type="number" id="cotVolumen" min="100" max="50000" step="100" value="'+window._cotState.volMensual+'" oninput="cotCalcular()" style="width:100%;padding:8px;background:var(--c1);color:var(--t1);border:1px solid var(--bd);border-radius:6px;font-size:14px;margin-bottom:8px">';
+  h += '<input type="range" id="cotVolumenRange" min="100" max="20000" step="100" value="'+window._cotState.volMensual+'" oninput="cotVolFromRange()" style="width:100%">';
+  h += '</div>';
+  h += '<div>';
+  h += '<label style="font-size:12px;color:var(--t2);display:block;margin-bottom:4px">Precio que cotizás (USD/kg)</label>';
+  h += '<input type="number" id="cotPrecio" min="0.1" step="0.01" value="'+(window._cotState.precio || 0).toFixed(4)+'" oninput="cotCalcular()" style="width:100%;padding:8px;background:var(--c1);color:var(--t1);border:1px solid var(--bd);border-radius:6px;font-size:14px;margin-bottom:8px">';
+  h += '<input type="range" id="cotPrecioRange" min="0" max="100" step="0.5" value="50" oninput="cotPrecioFromRange()" style="width:100%">';
+  h += '</div>';
+  h += '</div>';
+  h += '<div id="cotImpactoVolumen" style="margin-top:16px;padding:12px;background:#1f3a1f;border-radius:6px;font-size:13px;color:var(--t1)"></div>';
+  h += '</div>';
+  
+  // ============ Sección 3: ESCENARIOS DE PRECIO (NUEVO - reemplaza el "Resultado") ============
+  h += '<div style="background:#0f1419;border-radius:8px;padding:20px;margin-bottom:16px;border:1px solid var(--bd)">';
+  h += '<div style="color:var(--ac);font-weight:600;margin-bottom:8px;font-size:14px">3. ESCENARIOS DE PRECIO</div>';
+  h += '<p style="color:var(--t2);font-size:12px;margin-bottom:12px">Comparativa de escenarios usando el GF/kg ajustado por el volumen del cliente. Tu cotización aparece resaltada al final.</p>';
+  h += '<div id="cotEscenariosBody"></div>';
+  h += '</div>';
+  
+  // ============ Sección 4: Impacto en negocio total ============
+  h += '<div style="background:#0f1419;border-radius:8px;padding:20px;margin-bottom:16px;border:1px solid var(--bd)">';
+  h += '<div style="color:var(--ac);font-weight:600;margin-bottom:12px;font-size:14px">4. IMPACTO EN EL NEGOCIO TOTAL</div>';
+  h += '<div id="cotImpactoBody"></div>';
+  h += '</div>';
+  
+  // ============ Sección 5: Punto de quiebre ============
+  h += '<div style="background:#0f1419;border-radius:8px;padding:20px;margin-bottom:16px;border:1px solid var(--bd)">';
+  h += '<div style="color:var(--ac);font-weight:600;margin-bottom:12px;font-size:14px">5. PUNTO DE QUIEBRE</div>';
+  h += '<div id="cotQuiebreBody"></div>';
+  h += '</div>';
+  
+  // Botones
+  h += '<div style="display:flex;gap:12px;margin-top:20px">';
+  h += '<button onclick="cotExportPDF()" style="padding:10px 20px;background:var(--ac);color:#000;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">📄 Exportar PDF</button>';
+  h += '<button onclick="cotExportExcel()" style="padding:10px 20px;background:var(--ac);color:#000;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer">📊 Exportar Excel</button>';
+  h += '<button onclick="cotReset()" style="padding:10px 20px;background:transparent;color:var(--t2);border:1px solid var(--t2);border-radius:6px;font-size:14px;cursor:pointer">🔄 Reset</button>';
+  h += '</div>';
+  h += '</div>';
+  
+  document.getElementById("content").innerHTML = h;
+  cotDoFiltro();
+  cotInicializar();
+}
+
+function cotDoFiltro(){
+  var fl = document.getElementById('cot-l').value;
+  var fs = document.getElementById('cot-s').value.toLowerCase();
+  
+  // Filtrar productos
+  var items = [];
+  for(var i=0;i<P.length;i++){
+    var p = P[i];
+    if(fl !== 'ALL' && p.l !== fl) continue;
+    if(fs && (p.p + ' ' + p.l).toLowerCase().indexOf(fs) < 0) continue;
+    items.push({idx: i, l: p.l, p: p.p, pv: p.pv, v: p.v});
+  }
+  // Ordenar por línea + producto
+  items.sort(function(a,b){
+    if(a.l < b.l) return -1;
+    if(a.l > b.l) return 1;
+    return a.p < b.p ? -1 : 1;
+  });
+  
+  // Construir tabla
+  var h = '<table style="width:100%;font-size:12px"><thead><tr style="background:var(--s1);position:sticky;top:0;z-index:1">';
+  h += '';
+  h += '<th style="padding:6px 8px;text-align:left;border-bottom:1px solid var(--bd);color:var(--t2)">Producto</th>';
+  h += '<th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--bd);color:var(--t2)">Precio</th>';
+  h += '<th style="padding:6px 8px;text-align:right;border-bottom:1px solid var(--bd);color:var(--t2)">Vol/año</th>';
+  h += '</tr></thead><tbody>';
+  for(var i=0;i<items.length;i++){
+    var c = items[i];
+    var sel = (c.idx === window._cotState.productoP_idx);
+    var bgRow = sel ? 'background:rgba(135,206,235,0.18);' : '';
+    h += '<tr style="cursor:pointer;'+bgRow+'border-bottom:1px solid var(--bd)" onclick="cotSelectProduct('+c.idx+')">';
+    h += '';
+    h += '<td style="padding:5px 8px;font-weight:'+(sel?'600':'400')+';color:'+(sel?'var(--ac)':'var(--tx)')+'">'+(sel?'▶ ':'')+c.p+'</td>';
+    h += '<td style="padding:5px 8px;text-align:right;font-family:monospace">'+c.pv.toFixed(4)+'</td>';
+    h += '<td style="padding:5px 8px;text-align:right;font-family:monospace;color:var(--t2)">'+(c.v ? Math.round(c.v).toLocaleString('es-AR') : '0')+'</td>';
+    h += '</tr>';
+  }
+  if(items.length === 0){
+    h += '<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--t2)">No se encontraron productos</td></tr>';
+  }
+  h += '</tbody></table>';
+  document.getElementById('cot-tbl').innerHTML = h;
+}
+
+function cotSelectProduct(idxInP){
+  window._cotState.productoP_idx = idxInP;
+  // Resetear precio al actual del nuevo producto
+  var p = P[idxInP];
+  window._cotState.precio = p.pv;
+  if(document.getElementById('cotPrecio')){
+    document.getElementById('cotPrecio').value = p.pv.toFixed(4);
+    document.getElementById('cotPrecioRange').max = (p.pv * 2).toFixed(2);
+    document.getElementById('cotPrecioRange').value = p.pv;
+  }
+  cotDoFiltro();  // refresca la tabla con la nueva selección marcada
+  cotCalcular();
+}
+
+function cotInicializar(){
+  var p = P[window._cotState.productoP_idx];
+  if(!p) return;
+  if(window._cotState.precio === 0 || !window._cotState.precio){
+    window._cotState.precio = p.pv;
+    document.getElementById('cotPrecio').value = p.pv.toFixed(4);
+  }
+  var maxRange = p.pv * 2;
+  document.getElementById('cotPrecioRange').max = maxRange.toFixed(2);
+  document.getElementById('cotPrecioRange').value = window._cotState.precio;
+  cotCalcular();
+}
+
+function cotVolFromRange(){
+  var v = parseFloat(document.getElementById('cotVolumenRange').value);
+  document.getElementById('cotVolumen').value = v;
+  cotCalcular();
+}
+
+function cotPrecioFromRange(){
+  var v = parseFloat(document.getElementById('cotPrecioRange').value);
+  document.getElementById('cotPrecio').value = v.toFixed(4);
+  cotCalcular();
+}
+
+function cotCalcular(){
+  var p = P[window._cotState.productoP_idx];
+  if(!p) return;
+  var volCliente = parseFloat(document.getElementById('cotVolumen').value) || 0;
+  var precio = parseFloat(document.getElementById('cotPrecio').value) || 0;
+  window._cotState.volMensual = volCliente;
+  window._cotState.precio = precio;
+  
+  // Parámetros del dashboard
+  var TC = gp('pTC');
+  // Volumen mensual REAL del negocio (única fuente de verdad: Σ p.v / 12)
+  var volMensualActual = getVolMensualReal();
+  var FL = gp('pFL');
+  var IMP = gp('pIMP') / 100;
+  var GF_actual = gp('pGF')+gp('pBACK');
+  var MOD = gp('pMOD');
+  var TNA = gp('pTNA') / 100;
+  
+  // Gastos fijos absolutos en USD/mes (reverso del cálculo del dashboard)
+  var gastosFijosTotalesUSD = GF_actual * volMensualActual;
+  
+  // Volumen total con cliente y nuevo GF/kg
+  var volMensualNuevo = volMensualActual + volCliente;
+  var GF_nuevo = volMensualNuevo > 0 ? gastosFijosTotalesUSD / volMensualNuevo : 0;
+  
+  // Costo base (sin GF)
+  var costoBase = p.mp + MOD + FL;
+  
+  // ============ Renderizar info del producto ============
+  var pInfo = document.getElementById('cotProductoInfo');
+  if(pInfo){
+    var warnFazon = (p.l==='FAZON') ? '<div class="alert-box" style="margin-top:10px"><h4>⚠️ Producto de Fazón</h4><p>Este producto no lleva Gastos Fijos, estructura, amortización ni inventario (el cliente entrega la materia prima). Los escenarios de precio de abajo usan la fórmula estándar de la empresa y <b>no reflejan correctamente su costo real</b> — para Fazón, el EBITDA real es simplemente Precio − Costo MP − Impuestos (ver pestaña Resumen o Por Producto).</p></div>' : (p.esUnidad ? '<div class="alert-box" style="margin-top:10px"><h4>⚠️ Producto medido en Unidades, no en Kilos</h4><p>Este producto no lleva Gastos Fijos, MOD, Flete ni Back Office (esos costos están en USD por KILO, y este producto se factura por unidad). Los escenarios de precio de abajo usan la fórmula estándar de la empresa y <b>no reflejan correctamente su costo real</b> — el EBITDA real es simplemente Precio − Costo − Impuestos (ver pestaña Resumen o Por Producto).</p></div>' : '');
+    pInfo.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px">' +
+      '<div><div style="color:var(--t2);font-size:11px">Producto</div><div style="color:var(--ac);font-weight:600">['+p.l+'] '+p.p+'</div></div>' +
+      '<div><div style="color:var(--t2);font-size:11px">Precio actual</div><div style="color:var(--t1);font-weight:600">USD '+p.pv.toFixed(4)+'/kg</div></div>' +
+      '<div><div style="color:var(--t2);font-size:11px">Costo MP/r</div><div style="color:var(--t1);font-weight:600">USD '+(p.mp).toFixed(4)+'/kg</div></div>' +
+      '<div><div style="color:var(--t2);font-size:11px">Volumen actual</div><div style="color:var(--t1);font-weight:600">'+Math.round(p.v).toLocaleString('es-AR')+' kg/año</div></div>' +
+      '</div>' + warnFazon;
+  }
+  
+  // ============ Renderizar impacto del volumen ============
+  var deltaGF = GF_nuevo - GF_actual;
+  var pctIncVol = volMensualActual > 0 ? (volCliente / volMensualActual * 100) : 0;
+  document.getElementById('cotImpactoVolumen').innerHTML =
+    '📊 Volumen actual empresa: <b>'+Math.round(volMensualActual).toLocaleString('es-AR')+'</b> kg/mes  →  Nuevo total: <b>'+Math.round(volMensualNuevo).toLocaleString('es-AR')+'</b> kg/mes (+'+pctIncVol.toFixed(1)+'%)<br>' +
+    '📊 GF/kg actual: <b>USD '+GF_actual.toFixed(4)+'</b>  →  GF/kg con cliente: <b>USD '+GF_nuevo.toFixed(4)+'</b> (ahorro USD '+Math.abs(deltaGF).toFixed(4)+'/kg)';
+  
+  // ============ ESCENARIOS DE PRECIO (la tabla nueva) ============
+  // Fórmulas (igual que doFPR pero usando GF_nuevo)
+  // CMG 20%: precio donde CMG sea 20% del precio
+  var pCMG20 = (1 - IMP - 0.20) > 0 ? ((p.mp) + MOD + FL) / (1 - IMP - 0.20) : 0;
+  var cmg20 = pCMG20 - (p.mp) - MOD - pCMG20*IMP - FL;
+  // Breakeven: precio donde EBITDA = 0
+  var pBE = (1 - IMP) > 0 ? (costoBase + GF_nuevo) / (1 - IMP) : 0;
+  // +20%, +30%, +40%
+  var p20 = pBE * 1.20;
+  var p30 = pBE * 1.30;
+  var p40 = pBE * 1.40;
+  
+  // EBITDA por kg para cada escenario
+  function calcEbitda(pp){
+    return pp - (p.mp) - MOD - pp*IMP - FL - GF_nuevo;
+  }
+  function calcEbitdaCMG20(pp){
+    // En CMG 20% se computa CMG (sin GF)
+    return pp - (p.mp) - MOD - pp*IMP - FL;
+  }
+  
+  var e_cmg20 = calcEbitdaCMG20(pCMG20) - GF_nuevo;  // EBITDA real (con GF) en P.CMG20
+  var e_be = 0;  // por definición
+  var e_20 = calcEbitda(p20);
+  var e_30 = calcEbitda(p30);
+  var e_40 = calcEbitda(p40);
+  var e_tu = calcEbitda(precio);
+  
+  function escRow(label, color, precio_e, ebitda_unit, isYou){
+    var ebitdaMensual = ebitda_unit * volCliente;
+    var ebitdaAnual = ebitdaMensual * 12;
+    var bg = isYou ? 'background:rgba(135,206,235,0.12);' : '';
+    var ebitdaColor = ebitda_unit >= 0 ? 'var(--gn)' : 'var(--rd)';
+    return '<tr style="border-bottom:1px solid var(--bd);'+bg+'">' +
+      '<td style="padding:8px;font-weight:'+(isYou?'700':'600')+';color:'+color+'">'+(isYou?'🎯 ':'')+label+'</td>' +
+      '<td style="padding:8px;text-align:right;font-family:monospace;font-size:14px;color:'+(isYou?'var(--ac)':'var(--tx)')+';font-weight:'+(isYou?'700':'500')+'">USD '+precio_e.toFixed(4)+'</td>' +
+      '<td style="padding:8px;text-align:right;font-family:monospace;font-size:14px;color:'+ebitdaColor+';font-weight:'+(isYou?'700':'500')+'">'+(ebitda_unit>=0?'+':'')+ebitda_unit.toFixed(4)+'</td>' +
+      '<td style="padding:8px;text-align:right;font-family:monospace;color:'+ebitdaColor+';font-weight:'+(isYou?'700':'400')+'">USD '+ebitdaMensual.toLocaleString('es-AR',{maximumFractionDigits:0})+'</td>' +
+      '<td style="padding:8px;text-align:right;font-family:monospace;color:'+ebitdaColor+';font-weight:'+(isYou?'700':'400')+'">USD '+ebitdaAnual.toLocaleString('es-AR',{maximumFractionDigits:0})+'</td>' +
+      '</tr>';
+  }
+  
+  var tabHtml = '<table style="width:100%;font-size:13px"><thead><tr style="background:var(--s1)">' +
+    '<th style="padding:8px;text-align:left;color:var(--t2);font-size:12px">Escenario</th>' +
+    '<th style="padding:8px;text-align:right;color:var(--t2);font-size:12px">Precio (USD/kg)</th>' +
+    '<th style="padding:8px;text-align:right;color:var(--t2);font-size:12px">EBITDA (USD/kg)</th>' +
+    '<th style="padding:8px;text-align:right;color:var(--t2);font-size:12px">EBITDA mensual</th>' +
+    '<th style="padding:8px;text-align:right;color:var(--t2);font-size:12px">EBITDA anual</th>' +
+    '</tr></thead><tbody>';
+  tabHtml += escRow('CMG 20%', 'var(--ac)', pCMG20, e_cmg20, false);
+  tabHtml += escRow('Breakeven (EBITDA=0)', 'var(--or)', pBE, e_be, false);
+  tabHtml += escRow('+20% sobre BE', 'var(--gn)', p20, e_20, false);
+  tabHtml += escRow('+30% sobre BE', 'var(--gn)', p30, e_30, false);
+  tabHtml += escRow('+40% sobre BE', 'var(--gn)', p40, e_40, false);
+  tabHtml += escRow('Tu cotización', 'var(--ac)', precio, e_tu, true);
+  tabHtml += '</tbody></table>';
+  
+  // Mensaje contextual debajo de la tabla
+  var msg = '';
+  if(precio < pBE){
+    msg = '<div style="margin-top:12px;padding:10px;background:#3a1f1f;border-radius:6px;color:var(--rd);font-size:13px">⚠️ Tu precio (USD '+precio.toFixed(4)+') está por DEBAJO del Breakeven (USD '+pBE.toFixed(4)+'). Este cliente daría EBITDA negativo.</div>';
+  } else if(precio < p20){
+    msg = '<div style="margin-top:12px;padding:10px;background:#3a2f1f;border-radius:6px;color:var(--or);font-size:13px">📍 Tu precio está entre Breakeven y +20%. Genera EBITDA pero ajustado.</div>';
+  } else if(precio < p40){
+    msg = '<div style="margin-top:12px;padding:10px;background:#1f3a1f;border-radius:6px;color:var(--gn);font-size:13px">✅ Tu precio está en zona saludable (entre +20% y +40% sobre BE).</div>';
+  } else {
+    msg = '<div style="margin-top:12px;padding:10px;background:#1f3a1f;border-radius:6px;color:var(--gn);font-size:13px">🚀 Tu precio está por encima del +40% sobre BE. Excelente margen.</div>';
+  }
+  tabHtml += msg;
+  
+  document.getElementById('cotEscenariosBody').innerHTML = tabHtml;
+  
+  // ============ Renderizar impacto en negocio total ============
+  var totalsActuales = totalsPL(calcAllPL());
+  var ebitdaActual = totalsActuales.ebitda;
+  var revenueActual = totalsActuales.rev;
+  var ebitda_anual_cliente = e_tu * volCliente * 12;
+  var ebitdaConCliente = ebitdaActual + ebitda_anual_cliente;
+  var revenueConCliente = revenueActual + (precio * volCliente * 12);
+  var deltaEBITDA = ebitda_anual_cliente;
+  
+  document.getElementById('cotImpactoBody').innerHTML =
+    '<table style="width:100%;font-size:14px"><tr style="color:var(--t2);border-bottom:1px solid var(--bd)"><td style="padding:8px"></td><td style="padding:8px;text-align:right">Sin cliente</td><td style="padding:8px;text-align:right">Con cliente</td><td style="padding:8px;text-align:right">Diferencia</td></tr>' +
+    '<tr><td style="padding:8px;color:var(--t1)"><b>Revenue anual</b></td><td style="padding:8px;text-align:right">USD '+revenueActual.toLocaleString('es-AR',{maximumFractionDigits:0})+'</td><td style="padding:8px;text-align:right">USD '+revenueConCliente.toLocaleString('es-AR',{maximumFractionDigits:0})+'</td><td style="padding:8px;text-align:right;color:var(--gn)">+USD '+(revenueConCliente-revenueActual).toLocaleString('es-AR',{maximumFractionDigits:0})+'</td></tr>' +
+    '<tr><td style="padding:8px;color:var(--t1)"><b>EBITDA anual</b></td><td style="padding:8px;text-align:right;color:'+(ebitdaActual>=0?'var(--gn)':'var(--rd)')+'">USD '+ebitdaActual.toLocaleString('es-AR',{maximumFractionDigits:0})+'</td><td style="padding:8px;text-align:right;color:'+(ebitdaConCliente>=0?'var(--gn)':'var(--rd)')+'">USD '+ebitdaConCliente.toLocaleString('es-AR',{maximumFractionDigits:0})+'</td><td style="padding:8px;text-align:right;color:'+(deltaEBITDA>=0?'var(--gn)':'var(--rd)')+'">'+(deltaEBITDA>=0?'+':'')+'USD '+deltaEBITDA.toLocaleString('es-AR',{maximumFractionDigits:0})+'</td></tr>' +
+    '</table>' +
+    '<div style="margin-top:12px;padding:10px;background:'+(deltaEBITDA>=0?'#1f3a1f':'#3a1f1f')+';border-radius:6px;font-size:13px;color:var(--t1)">' +
+    (deltaEBITDA>=0 ? '💡 Tomar este cliente <b>MEJORA</b> el EBITDA total en USD '+deltaEBITDA.toLocaleString('es-AR',{maximumFractionDigits:0})+' anuales.' : '⚠️ Tomar este cliente <b>EMPEORA</b> el EBITDA total en USD '+Math.abs(deltaEBITDA).toLocaleString('es-AR',{maximumFractionDigits:0})+' anuales.') +
+    '</div>';
+  
+  // ============ Renderizar punto de quiebre ============
+  // A qué volumen mensual del cliente este precio cotizado da EBITDA = 0
+  var GF_meta = precio * (1-IMP) - costoBase;  // GF/kg meta (al cual EBITDA cliente = 0)
+  var quiebreBody = '';
+  if(GF_meta > 0){
+    var volMensualMinimo = gastosFijosTotalesUSD / GF_meta;
+    var volClienteMinimo = volMensualMinimo - volMensualActual;
+    if(volClienteMinimo > 0){
+      quiebreBody = 'Al precio cotizado de <b>USD '+precio.toFixed(4)+'/kg</b>, el cliente debe comprar al menos <b>'+Math.ceil(volClienteMinimo).toLocaleString('es-AR')+' kg/mes</b> para que valga la pena.';
+      if(volCliente >= volClienteMinimo){
+        quiebreBody += '<br><span style="color:var(--gn)">✅ El volumen actual ('+Math.round(volCliente).toLocaleString('es-AR')+' kg/mes) supera el mínimo. Buena cotización.</span>';
+      } else {
+        var faltante = volClienteMinimo - volCliente;
+        quiebreBody += '<br><span style="color:var(--rd)">⚠️ Faltan '+Math.ceil(faltante).toLocaleString('es-AR')+' kg/mes para llegar al punto de equilibrio. Negociá más volumen o subí el precio.</span>';
+      }
+    } else {
+      quiebreBody = '<span style="color:var(--gn)">✅ A este precio el negocio funciona ya con el volumen actual. Cualquier volumen adicional mejora.</span>';
+    }
+  } else {
+    quiebreBody = '<span style="color:var(--rd)">⚠️ A este precio NO hay punto de quiebre alcanzable. El precio no cubre ni los costos variables (mp + MOD + IMP + Flete). Subí el precio.</span>';
+  }
+  document.getElementById('cotQuiebreBody').innerHTML = quiebreBody;
+}
+
+function cotReset(){
+  window._cotState = {productoP_idx: -1, volMensual: 1000, precio: 0};
+  renderCotizador();
+}
+
+function cotExportPDF(){
+  alert('Para exportar a PDF: usá Cmd+P (Mac) o Ctrl+P (Win) y elegí "Guardar como PDF". Te recomiendo orientación horizontal.');
+  window.print();
+}
+
+function cotExportExcel(){
+  var p = P[window._cotState.productoP_idx];
+  if(!p) return;
+  var volCliente = parseFloat(document.getElementById('cotVolumen').value) || 0;
+  var precio = parseFloat(document.getElementById('cotPrecio').value) || 0;
+  var TC = gp('pTC'), FL = gp('pFL');
+  // Volumen mensual REAL (única fuente de verdad)
+  var volMensualActual = getVolMensualReal();
+  var IMP = gp('pIMP')/100, GF_actual = gp('pGF')+gp('pBACK'), MOD = gp('pMOD');
+  var gastosFijosTotalesUSD = GF_actual * volMensualActual;
+  var volMensualNuevo = volMensualActual + volCliente;
+  var GF_nuevo = volMensualNuevo > 0 ? gastosFijosTotalesUSD / volMensualNuevo : 0;
+  var costoBase = p.mp + MOD + FL;
+  var pBE = (1 - IMP) > 0 ? (costoBase + GF_nuevo) / (1 - IMP) : 0;
+  var pCMG20 = (1 - IMP - 0.20) > 0 ? ((p.mp) + MOD + FL) / (1 - IMP - 0.20) : 0;
+  function calcEb(pp){return pp - (p.mp) - MOD - pp*IMP - FL - GF_nuevo;}
+  var rows = [
+    ['COTIZACIÓN — RECSA Dashboard P&L'],
+    ['Fecha', new Date().toLocaleDateString('es-AR')],
+    [''],
+    ['PRODUCTO',''],
+    ['Línea', p.l],
+    ['Producto', p.p],
+    ['Precio actual (USD/kg)', p.pv.toFixed(4)],
+    ['Costo MP/r (USD/kg)', (p.mp).toFixed(4)],
+    [''],
+    ['ESCENARIO COTIZADO',''],
+    ['Volumen del cliente (kg/mes)', volCliente],
+    ['Volumen del cliente (kg/año)', volCliente*12],
+    ['Precio cotizado (USD/kg)', precio.toFixed(4)],
+    [''],
+    ['IMPACTO EN GASTOS FIJOS',''],
+    ['GF/kg actual (USD)', GF_actual.toFixed(4)],
+    ['GF/kg con cliente (USD)', GF_nuevo.toFixed(4)],
+    ['Ahorro de GF/kg', (GF_actual - GF_nuevo).toFixed(4)],
+    [''],
+    ['ESCENARIOS DE PRECIO',''],
+    ['Escenario', 'Precio USD/kg', 'EBITDA USD/kg', 'EBITDA mensual', 'EBITDA anual'],
+    ['CMG 20%', pCMG20.toFixed(4), (pCMG20 - p.mp - MOD - pCMG20*IMP - FL - GF_nuevo).toFixed(4), ((pCMG20 - p.mp - MOD - pCMG20*IMP - FL - GF_nuevo)*volCliente).toFixed(2), ((pCMG20 - p.mp - MOD - pCMG20*IMP - FL - GF_nuevo)*volCliente*12).toFixed(2)],
+    ['Breakeven', pBE.toFixed(4), '0.0000', '0.00', '0.00'],
+    ['+20% sobre BE', (pBE*1.20).toFixed(4), calcEb(pBE*1.20).toFixed(4), (calcEb(pBE*1.20)*volCliente).toFixed(2), (calcEb(pBE*1.20)*volCliente*12).toFixed(2)],
+    ['+30% sobre BE', (pBE*1.30).toFixed(4), calcEb(pBE*1.30).toFixed(4), (calcEb(pBE*1.30)*volCliente).toFixed(2), (calcEb(pBE*1.30)*volCliente*12).toFixed(2)],
+    ['+40% sobre BE', (pBE*1.40).toFixed(4), calcEb(pBE*1.40).toFixed(4), (calcEb(pBE*1.40)*volCliente).toFixed(2), (calcEb(pBE*1.40)*volCliente*12).toFixed(2)],
+    ['TU COTIZACIÓN', precio.toFixed(4), calcEb(precio).toFixed(4), (calcEb(precio)*volCliente).toFixed(2), (calcEb(precio)*volCliente*12).toFixed(2)]
+  ];
+  var csv = rows.map(function(r){
+    return r.map(function(c){
+      var s = String(c);
+      if(s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0){
+        s = '"' + s.replace(/"/g,'""') + '"';
+      }
+      return s;
+    }).join(',');
+  }).join('\n');
+  var BOM = '\uFEFF';
+  var blob = new Blob([BOM + csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'Cotizacion_'+p.p.replace(/[^a-zA-Z0-9]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ===== TAB: HISTÓRICO MENSUAL =====
+// [NUEVO 2026-08-24] Permite "cerrar" el mes actual guardando una foto de los
+// números clave (Revenue, CMG, EBITDA, GF/kg, Volumen, etc.) para poder
+// comparar mes a mes más adelante. Se guarda en localStorage (por navegador)
+// y también se puede descargar/cargar como archivo JSON, para tener el
+// histórico a salvo aunque se cambie de computadora o se borre el navegador.
+function getSnapshots(){
+  try{
+    var raw=localStorage.getItem('recsa_snapshots');
+    return raw?JSON.parse(raw):[];
+  }catch(e){ return []; }
+}
+function saveSnapshots(list){
+  try{ localStorage.setItem('recsa_snapshots', JSON.stringify(list)); }catch(e){}
+}
+// [NUEVO 2026-09-02] Recuperación del cierre de Agosto 2026 — se había
+// guardado en una versión anterior del archivo y el navegador no lo
+// encontraba al abrir esta versión nueva (localStorage queda separado por
+// archivo en algunos navegadores). Reconstruido desde la captura de pantalla
+// que pasó el usuario. Solo se precarga si todavía no hay NINGÚN snapshot
+// guardado — no pisa nada si el usuario ya tiene historial en este navegador.
+(function(){
+  try{
+    if(localStorage.getItem('recsa_snapshots')===null){
+      var snapshotAgosto=[{
+        mes:'agosto 2026',
+        fechaCierre:'2026-09-02T00:00:00.000Z',
+        tc:null, gfKg:1.63, backKg:0, modKg:null, flKg:null,
+        kilosVendidos:201694, kilosOtraViaMensual:null,
+        facturacionVendida:1242625, facturacionOtraViaMensual:null,
+        facturacionTotalMensual:null,
+        cmgAnual:413214, ebitdaAnual:129640, margenPct:10.5,
+        ebitdaUltimoMes:null, ebitdaUltimoMesLabel:null,
+        nProductos:128, rentables:55, pierden:41, sinVenta:32
+      }];
+      localStorage.setItem('recsa_snapshots', JSON.stringify(snapshotAgosto));
+    }
+  }catch(e){}
+})();
+function buildSnapshot(mesLabel){
+  var all=calcAllPL();var t=totalsPL(all);
+  var kgOtraVia=getKgOtraViaMensual(), facOtraVia=getFacOtraViaMensual();
+  // [ACTUALIZADO 2026-08-24] facturacionVendida ahora guarda el valor MANUAL
+  // (cargado al cierre de mes), no el calculado — es la cifra real, no un
+  // punto de partida sugerido. Si todavía no se cargó nada, cae al calculado.
+  var facVendidaManual=getFacturacionVendidaManual();
+  var facVendida=(facVendidaManual===null)?t.rev:facVendidaManual;
+  var ultimoMes=calcEbitdaUltimoMes();
+  return {
+    mes: mesLabel,
+    fechaCierre: new Date().toISOString(),
+    tc: gp('pTC'),
+    gfKg: gp('pGF'), backKg: gp('pBACK'), modKg: gp('pMOD'), flKg: gp('pFL'),
+    kilosVendidos: t.vol, kilosOtraViaMensual: kgOtraVia,
+    facturacionVendida: facVendida, facturacionOtraViaMensual: facOtraVia,
+    facturacionTotalMensual: getFacTotalCompletoMensual(),
+    cmgAnual: t.cmg, ebitdaAnual: t.ebitda, margenPct: parseFloat(t.margin),
+    // [NUEVO 2026-08-24] EBITDA real del último mes (si hay archivo cargado)
+    ebitdaUltimoMes: ultimoMes?ultimoMes.ebitda:null,
+    ebitdaUltimoMesLabel: ultimoMes?ultimoMes.mes:null,
+    nProductos: t.n, rentables: t.np, pierden: t.nn, sinVenta: t.ns
+  };
+}
+function cerrarMes(){
+  // [NUEVO 2026-09-02] Si ya se cargó un archivo de ventas (botón "EBITDA
+  // Último Mes"), sugerir ESE mes como default — normalmente el mes que se
+  // está cerrando es el último mes con datos reales, no el mes calendario de
+  // hoy (que casi nunca coincide, ya que se cierra un mes ya terminado).
+  var ultimoMesData=getUltimoMesData();
+  var hoy=new Date();
+  var mesDefault=ultimoMesData?ultimoMesData.mes:hoy.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  var mesLabel=prompt('¿Qué mes estás cerrando? (se usa para identificar el snapshot)', mesDefault);
+  if(!mesLabel)return;
+  var list=getSnapshots();
+  var existe=list.findIndex(function(s){return s.mes===mesLabel;});
+  if(existe>=0){
+    if(!confirm('Ya existe un cierre guardado para "'+mesLabel+'". ¿Reemplazarlo con los valores actuales?'))return;
+    list[existe]=buildSnapshot(mesLabel);
+  } else {
+    list.push(buildSnapshot(mesLabel));
+  }
+  saveSnapshots(list);
+  if(typeof renderContent==='function')renderContent();
+  alert('Mes "'+mesLabel+'" guardado. Vas a poder compararlo en la pestaña 📅 Histórico Mensual.');
+}
+function borrarSnapshot(idx){
+  var list=getSnapshots();
+  if(!confirm('¿Eliminar el cierre de "'+(list[idx]?list[idx].mes:'')+'"? No se puede deshacer.'))return;
+  list.splice(idx,1);
+  saveSnapshots(list);
+  if(typeof renderContent==='function')renderContent();
+}
+function exportarHistoricoJSON(){
+  var list=getSnapshots();
+  if(list.length===0){alert('No hay ningún mes cerrado todavía. Primero hacé clic en "📸 Cerrar Mes Actual".');return;}
+  var blob=new Blob([JSON.stringify(list,null,2)],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='RECSA_Historico_Mensual_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+// [NUEVO 2026-08-24] Exportar a CSV — se abre directo en Excel/Google Sheets,
+// más práctico que el JSON para guardar y revisar a simple vista.
+function exportarHistoricoCSV(){
+  var list=getSnapshots();
+  if(list.length===0){alert('No hay ningún mes cerrado todavía. Primero hacé clic en "📸 Cerrar Mes Actual".');return;}
+  var cols=['mes','fechaCierre','tc','gfKg','backKg','modKg','flKg','kilosVendidos','kilosOtraViaMensual','facturacionVendida','facturacionOtraViaMensual','facturacionTotalMensual','cmgAnual','ebitdaAnual','margenPct','ebitdaUltimoMes','ebitdaUltimoMesLabel','nProductos','rentables','pierden','sinVenta'];
+  var header=['Mes','Fecha de Cierre','TC','GF/kg','Back/kg','MOD/kg','Flete/kg','Kilos Vendidos','Kilos Otra Vía/mes','Facturación Vendida','Facturación Otra Vía/mes','Facturación Total/mes','CMG Anual','EBITDA Anual','Margen %','EBITDA Último Mes','Mes de ese EBITDA','N° Productos','Rentables','Pierden','Sin Venta/Dato'];
+  var rows=[header.join(',')];
+  for(var i=0;i<list.length;i++){var s=list[i];
+    var row=cols.map(function(c){
+      var v=s[c];
+      if(v===null||v===undefined)return '';
+      if(typeof v==='string')return '"'+v.replace(/"/g,'""')+'"';
+      return v;
+    });
+    rows.push(row.join(','));
+  }
+  var csv='\uFEFF'+rows.join('\r\n'); // BOM para que Excel muestre bien los acentos
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='RECSA_Historico_Mensual_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importarHistoricoJSON(input){
+  var file=input.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var incoming=JSON.parse(e.target.result);
+      if(!Array.isArray(incoming))throw new Error('El archivo no tiene el formato esperado.');
+      var actual=getSnapshots();
+      var mesesActuales=actual.map(function(s){return s.mes;});
+      var agregados=0, reemplazados=0;
+      incoming.forEach(function(snap){
+        var idx=mesesActuales.indexOf(snap.mes);
+        if(idx>=0){ actual[idx]=snap; reemplazados++; }
+        else { actual.push(snap); agregados++; }
+      });
+      saveSnapshots(actual);
+      if(typeof renderContent==='function')renderContent();
+      alert('Importado: '+agregados+' meses nuevos, '+reemplazados+' reemplazados.');
+    }catch(err){
+      alert('No se pudo leer el archivo: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+function renderHistorico(){
+  var list=getSnapshots().slice().sort(function(a,b){return new Date(a.fechaCierre)-new Date(b.fechaCierre);});
+  var h='<div class="card full"><h3>📅 Histórico Mensual</h3>';
+  h+='<p style="color:var(--t2);font-size:12px;margin-bottom:14px">Guardá una "foto" de los números del mes actual para poder comparar la evolución mes a mes. Se guarda en este navegador — descargá el archivo para tener una copia de respaldo o para pasarlo a otra computadora.</p>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">';
+  h+='<button class="btn-sm" style="background:var(--gn);color:#000;border-color:var(--gn);font-weight:600" onclick="cerrarMes()">📸 Cerrar Mes Actual</button>';
+  h+='<button class="btn-sm" style="background:var(--gn);color:#000;border-color:var(--gn);font-weight:600" onclick="exportarHistoricoCSV()">📊 Descargar Histórico (CSV/Excel)</button>';
+  h+='<button class="btn-sm" onclick="exportarHistoricoJSON()">📥 Descargar Histórico (JSON)</button>';
+  h+='<label class="btn-sm" style="cursor:pointer;display:inline-flex;align-items:center">📤 Cargar Histórico<input type="file" accept="application/json" onchange="importarHistoricoJSON(this)" style="display:none"></label>';
+  h+='</div>';
+  if(list.length===0){
+    h+='<p style="color:var(--t2);font-size:13px">Todavía no cerraste ningún mes. Hacé clic en "📸 Cerrar Mes Actual" para guardar el primero.</p></div>';
+    document.getElementById("content").innerHTML=h;
+    return;
+  }
+  // Tabla comparativa
+  h+='<div style="overflow-x:auto"><table><thead><tr><th>Mes</th><th style="text-align:right">Facturación</th><th style="text-align:right">CMG</th><th style="text-align:right">EBITDA</th><th style="text-align:right">Margen</th><th style="text-align:right">Kilos Vendidos</th><th style="text-align:right">GF/kg</th><th style="text-align:right">Rent/Pierde/S-Venta</th><th></th></tr></thead><tbody>';
+  var maxEbitda=Math.max.apply(null,list.map(function(s){return Math.abs(s.ebitdaAnual)||1;}));
+  for(var i=0;i<list.length;i++){var s=list[i];
+    var prevEbitda=i>0?list[i-1].ebitdaAnual:null;
+    var delta=prevEbitda!==null?s.ebitdaAnual-prevEbitda:null;
+    var barWidth=Math.abs(s.ebitdaAnual)/maxEbitda*100;
+    // [NUEVO 2026-09-02] Mostrar cuándo se archivó cada mes (fecha real de
+    // guardado), además del nombre del mes que representa — para distinguir
+    // "qué mes es" de "cuándo se guardó".
+    var fechaArchivado=s.fechaCierre?new Date(s.fechaCierre).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+    h+='<tr><td style="font-weight:600">'+s.mes+(fechaArchivado?'<div style="font-size:9px;color:var(--t2);font-weight:400">archivado '+fechaArchivado+'</div>':'')+'</td>';
+    h+='<td class="mono" style="text-align:right">USD '+fmt(s.facturacionVendida)+'</td>';
+    h+='<td class="mono" style="text-align:right">USD '+fmt(s.cmgAnual)+'</td>';
+    h+='<td class="mono" style="text-align:right;color:'+(s.ebitdaAnual>=0?'var(--gn)':'var(--rd)')+'">USD '+(s.ebitdaAnual<0?'-':'')+fmt(s.ebitdaAnual)+(delta!==null?' <span style="font-size:10px;color:'+(delta>=0?'var(--gn)':'var(--rd)')+'">('+(delta>=0?'+':'')+fmt(delta)+')</span>':'')+'</td>';
+    h+='<td class="mono" style="text-align:right">'+s.margenPct+'%</td>';
+    h+='<td class="mono" style="text-align:right">'+fmt(s.kilosVendidos)+' kg</td>';
+    h+='<td class="mono" style="text-align:right">USD '+fd(s.gfKg+s.backKg)+'</td>';
+    h+='<td class="mono" style="text-align:right;font-size:11px">'+s.rentables+'/'+s.pierden+'/'+s.sinVenta+'</td>';
+    h+='<td><button class="btn-sm" style="padding:2px 8px;font-size:10px" onclick="borrarSnapshot('+i+')">🗑️</button></td></tr>';
+  }
+  h+='</tbody></table></div>';
+  // Mini gráfico de barras EBITDA por mes (reutiliza el sistema .bar existente)
+  h+='<div style="margin-top:20px"><div style="font-size:11px;color:var(--t2);margin-bottom:8px">EBITDA Anual por mes cerrado</div>';
+  for(var i=0;i<list.length;i++){var s=list[i];var w=Math.max(2,Math.abs(s.ebitdaAnual)/maxEbitda*100);
+    h+='<div style="display:grid;grid-template-columns:120px 1fr 90px;gap:8px;align-items:center;margin-bottom:4px"><div style="font-size:11px">'+s.mes+'</div><div class="bar"><div class="s" style="width:'+w+'%;background:'+(s.ebitdaAnual>=0?'var(--gn)':'var(--rd)')+'"></div></div><div class="mono" style="font-size:11px;text-align:right">USD '+fmt(s.ebitdaAnual)+'</div></div>';
+  }
+  h+='</div></div>';
+  document.getElementById("content").innerHTML=h;
+}
+
+// ===== TAB: VS. COMPETENCIA =====
+// [NUEVO 2026-08-24] Cargás el precio de la competencia y el volumen que
+// ganarías con ese precio (adicional al volumen mensual habitual, diluye
+// GF/kg igual que el Simulador de Volumen Adicional), y calcula el COSTO
+// MÁXIMO que podés tener en ese producto para ser competitivo sin perder
+// plata — a diferencia del Simulador (que parte del costo y calcula EBITDA),
+// acá se parte del precio objetivo y se despeja el costo máximo permitido.
+function compHTML(){
+  var opts='<option value="-1">+ Nuevo producto (no existente en la lista)</option>';
+  var all=calcAllPL();
+  for(var i=0;i<all.length;i++){opts+='<option value="'+i+'">['+all[i].l+'] '+all[i].p+'</option>';}
+  var h='<div class="card full"><h3>🎯 Costo Máximo para Ser Competitivo</h3>';
+  h+='<p style="color:var(--t2);font-size:11px;margin-bottom:12px">Cargá el precio de la competencia y el volumen que ganarías a ese precio (se suma al volumen mensual habitual y diluye GF/kg, igual que en el Simulador de Volumen Adicional). Te calcula el <b>costo máximo</b> de materia prima que podés tener en tu producto para igualar ese precio sin perder plata.</p>';
+  h+='<div style="display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:10px;margin-bottom:6px">';
+  h+='<div><label style="font-size:9px;color:var(--t2);display:block;margin-bottom:3px">PRODUCTO</label><select id="cp-prod" onchange="compOnSelect()" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:6px;border-radius:6px;font-size:11px">'+opts+'</select></div>';
+  h+='<div><label style="font-size:9px;color:var(--t2);display:block;margin-bottom:3px">PRECIO COMPETENCIA USD/kg</label><input id="cp-precio" type="number" step="0.0001" value="0" oninput="compUpdate()" style="width:100%;background:var(--s1);border:1px solid var(--rd);color:var(--rd);padding:6px;border-radius:6px;font-family:JetBrains Mono;font-size:11px;text-align:right;font-weight:600"></div>';
+  h+='<div><label style="font-size:9px;color:var(--t2);display:block;margin-bottom:3px">TU COSTO ACTUAL USD/kg</label><input id="cp-costo" type="number" step="0.0001" value="0" oninput="compUpdate()" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--ac);padding:6px;border-radius:6px;font-family:JetBrains Mono;font-size:11px;text-align:right"></div>';
+  h+='<div><label style="font-size:9px;color:var(--t2);display:block;margin-bottom:3px">VOL. A GANAR (kg/MES adicional)</label><input id="cp-vol" type="number" step="1" value="0" oninput="compUpdate()" style="width:100%;background:var(--s1);border:1px solid var(--gn);color:var(--gn);padding:6px;border-radius:6px;font-family:JetBrains Mono;font-size:11px;text-align:right;font-weight:600" title="Kilos adicionales POR MES (no por año). Ej: si vas a producir 40 toneladas más por mes, cargá 40000."></div>';
+  h+='</div>';
+  h+='<div id="cp-nombre-wrap" style="display:none;margin-bottom:14px"><label style="font-size:9px;color:var(--t2);display:block;margin-bottom:3px">NOMBRE PRODUCTO NUEVO (solo referencia)</label><input id="cp-nombre" type="text" placeholder="Ej: Nuevo desarrollo XYZ" style="width:100%;background:var(--s1);border:1px solid var(--bd);color:var(--tx);padding:6px;border-radius:6px;font-size:11px"></div>';
+  // [NUEVO 2026-08-24] Mismo selector de método GF que en Por Producto y
+  // Pricing Estratégico, para que el costo máximo competitivo sea coherente
+  // con el criterio de asignación de estructura elegido en el resto del dashboard.
+  h+='<div style="margin-bottom:10px"><label style="font-size:9px;color:var(--t2);display:block;margin-bottom:3px">MÉTODO DE ASIGNACIÓN DE GASTOS FIJOS</label><select id="cp-gf-method" onchange="compUpdate()" style="background:var(--s1);border:1px solid var(--ac);color:var(--ac);padding:6px;border-radius:6px;font-size:11px;font-weight:600"><option value="kg">GF: Por Kilo (actual)</option><option value="pct">GF: % Facturación (alternativo)</option></select></div>';
+  h+='<div id="cp-gf-method-note"></div>';
+  h+='<div id="cp-result" style="margin-top:10px"></div>';
+  h+='</div>';
+  return h;
+}
+function compOnSelect(){
+  var sel=document.getElementById('cp-prod');var idx=parseInt(sel.value);var nameWrap=document.getElementById('cp-nombre-wrap');
+  if(idx===-1){
+    nameWrap.style.display='block';
+  } else {
+    nameWrap.style.display='none';
+    var all=calcAllPL();var c=all[idx];
+    document.getElementById('cp-costo').value=c.mp.toFixed(4);
+    if(parseFloat(document.getElementById('cp-precio').value)===0){
+      document.getElementById('cp-precio').value=c.pv.toFixed(4); // punto de partida razonable
+    }
+  }
+  compUpdate();
+}
+function compUpdate(){
+  var precioComp=parseFloat(document.getElementById('cp-precio').value)||0;
+  var costoActual=parseFloat(document.getElementById('cp-costo').value)||0;
+  // [ACTUALIZADO 2026-08-24] A pedido: el volumen a ganar ahora se carga
+  // directo en kg/MES (no kg/año), para evitar la confusión de unidades que
+  // hacía parecer "raro" el resultado de la dilución.
+  var volAdicMensual=parseFloat(document.getElementById('cp-vol').value)||0;
+  var gfMethod=document.getElementById('cp-gf-method')?document.getElementById('cp-gf-method').value:'kg';
+  var tc=gp('pTC')||1500;var GA=G_GASTOS_RECSA;
+  var volMensualActual=getVolMensualTotal();
+  var volMensualNuevo=volMensualActual+volAdicMensual;
+  var mod=gp('pMOD'),fl=gp('pFL'),impPct=gp('pIMP')/100;
+  var imp=precioComp*impPct;
+  var costoMaximo, ebitdaKgAlPrecioComp, gfTotalNuevo, reduccionPct, impactoCartera, notaMetodo;
+  if(gfMethod==='pct'){
+    // [NUEVO 2026-08-24] Método % Facturación: GF+Back Office se reparten
+    // como % de lo que factura cada producto, no por kilo parejo. El costo
+    // máximo se despeja algebraicamente (no circular):
+    // costoMax = precioComp*(1-impPct-gfPctNuevo) - mod - fl
+    var gfBackUSDMensual=(GA.fijos+GA.back)/tc; // fijo, no depende del volumen
+    var facTotalMensualActual=getFacTotalCompletoMensual();
+    var facAdicionalMensual=precioComp*volAdicMensual;
+    var facTotalMensualNuevo=facTotalMensualActual+facAdicionalMensual;
+    var gfPctActual=facTotalMensualActual>0?(gfBackUSDMensual/facTotalMensualActual):0;
+    var gfPctNuevo=facTotalMensualNuevo>0?(gfBackUSDMensual/facTotalMensualNuevo):0;
+    reduccionPct=gfPctActual>0?((gfPctActual-gfPctNuevo)/gfPctActual*100):0;
+    gfTotalNuevo=precioComp*gfPctNuevo; // para mostrar en USD/kg equivalente a este precio
+    costoMaximo=precioComp*(1-impPct-gfPctNuevo)-mod-fl;
+    ebitdaKgAlPrecioComp=precioComp-costoActual-mod-fl-imp-(precioComp*gfPctNuevo);
+    // Ahorro en cartera existente: la % baja, así que cada dólar de
+    // facturación actual paga menos GF que antes.
+    impactoCartera=(gfPctActual-gfPctNuevo)*(facTotalMensualActual*12);
+    notaMetodo='<p style="color:var(--t2);font-size:11px;margin:8px 0">ℹ️ Método % Facturación: GF+Back Office = '+(gfPctNuevo*100).toFixed(2)+'% del precio de competencia (era '+(gfPctActual*100).toFixed(2)+'% antes de ganar este volumen). El costo máximo se calcula despejando esa fórmula, no como resta directa de un USD/kg fijo.</p>';
+  } else {
+    var gfActual=GA.fijos/(tc*volMensualActual), backActual=GA.back/(tc*volMensualActual);
+    var gfNuevo=volMensualNuevo>0?GA.fijos/(tc*volMensualNuevo):gfActual;
+    var backNuevo=volMensualNuevo>0?GA.back/(tc*volMensualNuevo):backActual;
+    var gfTotalActual=gfActual+backActual; gfTotalNuevo=gfNuevo+backNuevo;
+    reduccionPct=gfTotalActual>0?((gfTotalActual-gfTotalNuevo)/gfTotalActual*100):0;
+    costoMaximo=precioComp-mod-fl-imp-gfTotalNuevo;
+    ebitdaKgAlPrecioComp=precioComp-costoActual-mod-fl-imp-gfTotalNuevo;
+    var t0=totalsPL(calcAllPL());
+    impactoCartera=(gfTotalActual-gfTotalNuevo)*t0.vol;
+    notaMetodo='';
+  }
+  var noteEl=document.getElementById('cp-gf-method-note'); if(noteEl)noteEl.innerHTML=notaMetodo;
+  var margenDisponible=costoMaximo-costoActual; // (+) podés bajar costo o ganar más margen | (-) no sos competitivo así
+  // EBITDA anualizado del volumen nuevo: el margen por kg x volumen mensual x 12
+  var ebitdaNuevoVolumen=ebitdaKgAlPrecioComp*volAdicMensual*12;
+  var t=totalsPL(calcAllPL());
+  var impactoTotal=ebitdaNuevoVolumen+impactoCartera;
+  var nuevoEbitdaTotal=t.ebitda+impactoTotal;
+  var esCompetitivo=margenDisponible>=0;
+  var row=function(lb,vl,color){return '<div class="sr"><span class="lb">'+lb+'</span><span class="vl mono"'+(color?' style="color:'+color+'"':'')+'>'+vl+'</span></div>';};
+  var h='<div class="row" style="grid-template-columns:1fr 1fr">';
+  h+='<div class="card" style="background:var(--s1)"><h3 style="font-size:11px">🎯 Costo Máximo Competitivo</h3>';
+  h+=row('Precio competencia',fd(precioComp)+' USD/kg');
+  h+=row('GF + Back diluido (con vol. nuevo)',fd(gfTotalNuevo)+' USD/kg','var(--gn)');
+  h+=row('Reducción del GF',reduccionPct.toFixed(1)+'%',reduccionPct>0?'var(--gn)':'var(--t2)');
+  h+='<div style="border-top:1px solid var(--bd);margin:4px 0"></div>';
+  h+=row('= COSTO MÁXIMO (margen 0)',fd(costoMaximo)+' USD/kg',costoMaximo>=0?'var(--ac)':'var(--rd)');
+  h+=row('Tu costo actual',fd(costoActual)+' USD/kg');
+  h+='<div style="border-top:1px solid var(--bd);margin:4px 0"></div>';
+  h+=row(esCompetitivo?'✅ Margen disponible':'❌ Te falta bajar el costo',(margenDisponible>=0?'+':'')+fd(margenDisponible)+' USD/kg',esCompetitivo?'var(--gn)':'var(--rd)');
+  h+='</div>';
+  h+='<div class="card" style="background:var(--s1)"><h3 style="font-size:11px">💰 Impacto en EBITDA si ganás el volumen</h3>';
+  h+=row('EBITDA/kg a precio de competencia (con tu costo actual)',fd(ebitdaKgAlPrecioComp)+' USD',ebitdaKgAlPrecioComp>=0?'var(--gn)':'var(--rd)');
+  h+=row('EBITDA total del volumen ganado','USD '+(ebitdaNuevoVolumen<0?'-':'')+fmt(Math.abs(ebitdaNuevoVolumen)),ebitdaNuevoVolumen>=0?'var(--gn)':'var(--rd)');
+  h+=row('+ Ahorro en cartera existente (por dilución GF)','USD '+fmt(impactoCartera),'var(--gn)');
+  h+='<div style="border-top:1px solid var(--bd);margin:4px 0"></div>';
+  h+=row('= Impacto total en EBITDA anual','USD '+(impactoTotal<0?'-':'+')+fmt(Math.abs(impactoTotal)),impactoTotal>=0?'var(--gn)':'var(--rd)');
+  h+=row('Nuevo EBITDA anual total (compañía)','USD '+(nuevoEbitdaTotal<0?'-':'')+fmt(Math.abs(nuevoEbitdaTotal)),nuevoEbitdaTotal>=0?'var(--gn)':'var(--rd)');
+  h+='</div></div>';
+  if(!esCompetitivo){
+    h+='<div class="alert-box" style="margin-top:14px"><h4>⚠️ No sos competitivo con este costo</h4><p>Tu costo actual ('+fd(costoActual)+' USD/kg) supera el costo máximo permitido ('+fd(costoMaximo)+' USD/kg) por '+fd(Math.abs(margenDisponible))+' USD/kg. Para igualar el precio de la competencia sin perder plata, necesitás bajar el costo de materia prima en esa magnitud (o negociar mejor flete/logística).</p></div>';
+  }
+  document.getElementById('cp-result').innerHTML=h;
+}
+function renderCompetencia(){
+  var h=compHTML();
+  document.getElementById("content").innerHTML=h;
+  compOnSelect();
+}
+
+// ===== EBITDA DEL ÚLTIMO MES (carga de archivo real) =====
+// [NUEVO 2026-08-24] Permite subir un Excel con el mismo formato de
+// RECSA_STOCK_VENTA (Artículos | Atrib. Nivel 1 | Unidad | meses... | Total)
+// y calcula el EBITDA real del ÚLTIMO MES de ese archivo, usando el volumen
+// específico de ese mes (no el anual) junto con el precio/costo ACTUALES de
+// cada producto — válido porque esos precios/costos representan el último
+// mes cerrado (aclarado por el usuario). Distinto del EBITDA Anual, que usa
+// el volumen de los 12 meses.
+function extraerTamanoTexto(texto){
+  var m = String(texto||'').match(/(\d+(?:[.,]\d+)?)\s*kg/gi);
+  if(!m) return null;
+  var last = m[m.length-1];
+  var num = last.match(/[\d.,]+/)[0].replace(',','.');
+  return parseFloat(num);
+}
+function getUltimoMesData(){
+  try{
+    var raw = localStorage.getItem('recsa_ultimoMesData');
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function cargarVentasUltimoMes(input){
+  var file = input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      // [FIX 2026-09-02] cellDates:true para que las columnas de mes que son
+      // fechas reales de Excel (no texto) se lean como objetos Date, en vez
+      // de números de serie crudos (ej. 46235 en vez de "agosto '26").
+      var wb = XLSX.read(e.target.result, {type:'array', cellDates:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+      // Buscar la fila de encabezados: la que tenga "Total" como uno de sus valores
+      var headerRowIdx=-1, headerRow=null;
+      for(var i=0;i<Math.min(rows.length,10);i++){
+        var r=rows[i];
+        if(r && r.some(function(c){return String(c||'').trim().toLowerCase()==='total';})){
+          headerRowIdx=i; headerRow=r; break;
+        }
+      }
+      if(headerRowIdx===-1) throw new Error('No se encontró la fila de encabezados (se busca una columna "Total"). Verificá que el archivo tenga el mismo formato que RECSA_STOCK_VENTA.');
+      var totalColIdx = headerRow.findIndex(function(c){return String(c||'').trim().toLowerCase()==='total';});
+      var ultimoMesColIdx = totalColIdx-1;
+      var mesLabelRaw = headerRow[ultimoMesColIdx];
+      var mesLabel;
+      // Uso Object.prototype.toString (no "instanceof Date") para que funcione
+      // aunque el objeto Date venga de otro contexto/realm de JS.
+      if(mesLabelRaw && Object.prototype.toString.call(mesLabelRaw)==='[object Date]'){
+        var nombresMeses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        mesLabel = nombresMeses[mesLabelRaw.getUTCMonth()]+" '"+String(mesLabelRaw.getUTCFullYear()).slice(2);
+      } else {
+        mesLabel = String(mesLabelRaw||'Último mes').trim();
+      }
+      var mapa={};
+      for(var i=headerRowIdx+1;i<rows.length;i++){
+        var r=rows[i];
+        if(!r || !r[0]) continue;
+        var articulo=String(r[0]).trim();
+        var artLow=articulo.toLowerCase();
+        if(artLow==='total'||artLow.indexOf('total completo')>=0) continue;
+        var codeMatch=articulo.match(/^(\d+)/);
+        if(!codeMatch) continue;
+        var code=codeMatch[1];
+        var size=extraerTamanoTexto(r[1])||extraerTamanoTexto(articulo);
+        var val=r[ultimoMesColIdx];
+        if(val===null||val===undefined) val=0;
+        val=Math.abs(parseFloat(val)||0);
+        var key=code+'|'+(size===null?'null':size);
+        mapa[key]=val;
+      }
+      if(Object.keys(mapa).length===0) throw new Error('No se encontraron filas de productos válidas.');
+      localStorage.setItem('recsa_ultimoMesData', JSON.stringify({mes:mesLabel, mapa:mapa, cargadoEl:new Date().toISOString(), archivo:file.name}));
+      if(typeof renderContent==='function') renderContent();
+    }catch(err){
+      alert('No se pudo leer el archivo: '+err.message);
+      console.error('cargarVentasUltimoMes error:', err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+function calcEbitdaUltimoMes(){
+  var data=getUltimoMesData();
+  if(!data) return null;
+  var all=calcAllPL();
+  var ebitda=0, cmg=0, rev=0, vol=0, matched=0, unmatched=0;
+  for(var i=0;i<all.length;i++){
+    var c=all[i];
+    var codeMatch=c.p.match(/^(\d+)/);
+    if(!codeMatch){ unmatched++; continue; }
+    var code=codeMatch[1];
+    var size=extraerTamanoTexto(c.p);
+    var key1=code+'|'+(size===null?'null':size);
+    var key2=code+'|null';
+    var volMes=data.mapa[key1];
+    if(volMes===undefined && size===null) volMes=data.mapa[key2];
+    if(volMes===undefined){ unmatched++; continue; }
+    matched++;
+    if(c.ebitda!==null){ ebitda+=c.ebitda*volMes; cmg+=c.cmg*volMes; }
+    rev+=c.pv*volMes;
+    vol+=volMes;
+  }
+  return {mes:data.mes, ebitda:ebitda, cmg:cmg, rev:rev, vol:vol, matched:matched, unmatched:unmatched, margen:rev>0?(ebitda/rev*100):0, archivo:data.archivo};
+}
+
+// ===== TAB: ASIGNACION DE GASTOS =====
+function renderGastos(){
+  var tc=gp('pTC')||1450;
+  var vol=getVolMensualReal();
+  var GA=G_GASTOS_RECSA;
+  var fmtG=function(n){return Math.abs(n).toLocaleString('es-AR',{maximumFractionDigits:0})};
+  var totalARS=GA.costo_directo+GA.fijos+GA.back+GA.fin+GA.otros_imp;
+  // Valores USD/kg (de los inputs hidden actuales)
+  var cd_kg=gp('pMOD'), fl_kg=gp('pFL'), gf_kg=gp('pGF'), bo_kg=gp('pBACK'), fin_kg=gp('pFIN'), oi_kg=gp('pOTROSIMP');
+  // USD/mes para cada concepto
+  var cd_usd_mes=GA.costo_directo/tc, gf_usd_mes=GA.fijos/tc, bo_usd_mes=GA.back/tc, fin_usd_mes=GA.fin/tc, oi_usd_mes=GA.otros_imp/tc;
+  var totalUSDmes=totalARS/tc;
+  var gfBoUSDmes=gf_usd_mes+bo_usd_mes;
+  var finOiUSDmes=fin_usd_mes+oi_usd_mes;
+  
+  var h='<div class="card full"><h3>💼 Gastos RECSA — Control desde Masters</h3>';
+  h+='<p style="color:var(--t2);font-size:12px;margin-bottom:12px">Fuente: master_de_gastos + master_gastos_financieros (filtro empresa=RECSA). Valores en ARS/mes (embebidos). USD/kg = ARS / TC ('+tc+') / Vol ('+fmt(vol)+' kg). <b>Financiero y Otros Impuestos son solo informativos — ya no se descuentan en ningún cálculo del P&L (a pedido, 2026-08-24).</b></p>';
+  h+='<div class="kpis" style="grid-template-columns:repeat(4,1fr)">';
+  h+='<div class="kpi"><div class="lb">Total Gastos RECSA</div><div class="vl">ARS '+fmtG(totalARS)+'</div><div style="font-size:10px;color:var(--t2)">USD '+fmtG(totalUSDmes)+'/mes</div></div>';
+  h+='<div class="kpi"><div class="lb">Fijos + Back Office</div><div class="vl" style="color:var(--gn)">USD '+fmtG(gfBoUSDmes)+'/mes</div><div style="font-size:10px;color:var(--t2)">'+(gf_kg+bo_kg).toFixed(4)+' USD/kg</div></div>';
+  h+='<div class="kpi"><div class="lb">Costo Directo (MOD+Logística)</div><div class="vl" style="color:var(--or)">USD '+fmtG(cd_usd_mes)+'/mes</div><div style="font-size:10px;color:var(--t2)">'+cd_kg.toFixed(4)+' USD/kg</div></div>';
+  h+='<div class="kpi"><div class="lb">Financiero + Otros Imp</div><div class="vl" style="color:var(--pu)">USD '+fmtG(finOiUSDmes)+'/mes</div><div style="font-size:10px;color:var(--t2)">'+(fin_kg+oi_kg).toFixed(4)+' USD/kg</div></div>';
+  h+='</div>';
+  h+='<table style="margin-top:14px"><thead><tr><th>Concepto</th><th style="text-align:right">ARS/mes</th><th style="text-align:right">USD/mes</th><th style="text-align:right">USD/kg</th><th>Componente P&L</th></tr></thead><tbody>';
+  var rows=[
+    ['Costo Directo (MOD + Logística)',GA.costo_directo,cd_kg,'CMG (resta antes de CMG)'],
+    ['Gastos Fijos',GA.fijos,gf_kg,'EBITDA (resta de CMG)'],
+    ['Back Office',GA.back,bo_kg,'EBITDA (resta de CMG)'],
+    ['Gastos Financieros',GA.fin,fin_kg,'⚠️ NO se descuenta (excluido a pedido)'],
+    ['Otros Impuestos',GA.otros_imp,oi_kg,'⚠️ NO se descuenta (excluido a pedido)']
+  ];
+  rows.forEach(function(rr){
+    h+='<tr><td style="font-weight:500">'+rr[0]+'</td><td class="mono" style="text-align:right">'+fmtG(rr[1])+'</td><td class="mono" style="text-align:right">'+fmtG(rr[1]/tc)+'</td><td class="mono" style="text-align:right">'+rr[2].toFixed(4)+'</td><td style="font-size:11px;color:var(--t2)">'+rr[3]+'</td></tr>';
+  });
+  h+='<tr style="border-top:2px solid var(--bd);font-weight:700"><td>TOTAL</td><td class="mono" style="text-align:right">'+fmtG(totalARS)+'</td><td class="mono" style="text-align:right">'+fmtG(totalUSDmes)+'</td><td class="mono" style="text-align:right">'+(cd_kg+gf_kg+bo_kg+fin_kg+oi_kg).toFixed(4)+'</td><td></td></tr>';
+  h+='</tbody></table>';
+  h+='<div style="margin-top:10px;padding:8px 12px;background:rgba(0,212,170,0.08);border-left:3px solid var(--gn);font-size:12px">Nota: estos gastos salen de los masters de RECSA y se recalculan automáticamente al cambiar el TC o el volumen. Para modificar los valores ARS, actualizar los masters via chat siguiendo el procedimiento operativo.</div>';
+  h+='</div>';
+  document.getElementById("content").innerHTML=h;
+}
+
+function renderGTbl(){
+  var fe=document.getElementById('g-emp').value;var fs=document.getElementById('g-s').value.toLowerCase();
+  var filtered=G.map(function(g,i){return Object.assign({},g,{i:i})}).filter(function(g){if(fe!=='ALL'&&g.empresa!==fe)return false;if(fs&&!(g.nombre+g.concepto+g.posicion).toLowerCase().includes(fs))return false;return true;});
+  var fmtG=function(n){return Math.abs(n).toLocaleString('es-AR',{maximumFractionDigits:0})};
+  var h='<table><thead><tr><th>Emp</th><th>Concepto</th><th>Nombre</th><th style="text-align:right">Costo</th><th style="text-align:center;color:var(--ac)">RECSA</th><th style="text-align:center;color:var(--ac)">RECSA L+B</th><th style="text-align:center;color:var(--gn)">VIVALCE</th><th style="text-align:center;color:var(--gn)">VIVALCE L+B</th><th>Σ</th></tr></thead><tbody>';
+  filtered.forEach(function(g){var i=g.i,a=GA[i];var sR1=a.cdir_r+a.fijo_r,sR2=a.logis_r+a.back_r,sV1=a.cdir_v+a.fijo_v,sV2=a.logis_v+a.back_v;var total=sR1+sR2+sV1+sV2;var ok=Math.abs(total-1)<=.05||g.costo_final===0;var tag=g.empresa==='RECSA'?'<span class="tag" style="background:rgba(79,140,255,.15);color:var(--ac)">R</span>':'<span class="tag" style="background:rgba(0,212,170,.15);color:var(--gn)">V</span>';
+  h+='<tr><td>'+tag+'</td><td style="font-size:11px;color:var(--t2)">'+g.concepto+'</td><td style="font-weight:500;font-size:12px">'+g.nombre+'</td><td class="mono" style="text-align:right">'+fmtG(g.costo_final)+'</td>';
+  h+='<td><input type="range" min="0" max="100" value="'+Math.round(sR1*100)+'" oninput="updG('+i+',\x27r1\x27,this.value)" style="width:50px"><span class="pv" id="gv'+i+'r1">'+Math.round(sR1*100)+'%</span></td>';
+  h+='<td><input type="range" min="0" max="100" value="'+Math.round(sR2*100)+'" oninput="updG('+i+',\x27r2\x27,this.value)" style="width:50px"><span class="pv" id="gv'+i+'r2">'+Math.round(sR2*100)+'%</span></td>';
+  h+='<td><input type="range" min="0" max="100" value="'+Math.round(sV1*100)+'" oninput="updG('+i+',\x27v1\x27,this.value)" style="width:50px"><span class="pv" id="gv'+i+'v1">'+Math.round(sV1*100)+'%</span></td>';
+  h+='<td><input type="range" min="0" max="100" value="'+Math.round(sV2*100)+'" oninput="updG('+i+',\x27v2\x27,this.value)" style="width:50px"><span class="pv" id="gv'+i+'v2">'+Math.round(sV2*100)+'%</span></td>';
+  h+='<td class="mono" style="color:'+(ok?'var(--gn)':'var(--rd)')+'">'+Math.round(total*100)+'%</td></tr>';});
+  h+='</tbody></table>';document.getElementById("g-tbl").innerHTML=h;
+}
+function updG(i,group,val){
+  var pct=val/100,a=GA[i];
+  if(group==='r1'){var old=a.cdir_r+a.fijo_r;if(old>0){a.cdir_r=pct*(a.cdir_r/old);a.fijo_r=pct*(a.fijo_r/old)}else{a.cdir_r=pct*.5;a.fijo_r=pct*.5}}
+  else if(group==='r2'){var old=a.logis_r+a.back_r;if(old>0){a.logis_r=pct*(a.logis_r/old);a.back_r=pct*(a.back_r/old)}else{a.logis_r=pct*.5;a.back_r=pct*.5}}
+  else if(group==='v1'){var old=a.cdir_v+a.fijo_v;if(old>0){a.cdir_v=pct*(a.cdir_v/old);a.fijo_v=pct*(a.fijo_v/old)}else{a.cdir_v=pct*.5;a.fijo_v=pct*.5}}
+  else if(group==='v2'){var old=a.logis_v+a.back_v;if(old>0){a.logis_v=pct*(a.logis_v/old);a.back_v=pct*(a.back_v/old)}else{a.logis_v=pct*.5;a.back_v=pct*.5}}
+  document.getElementById('gv'+i+group).textContent=val+'%';
+  renderGastos();
+}
+
+function loadGastos(file){
+  if(!file)return;var reader=new FileReader();
+  reader.onload=function(e){try{
+    var wb=XLSX.read(e.target.result,{type:'array',cellFormula:false});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:0,raw:true});
+    var hdrs=rows[0].map(function(h){return String(h||'').toLowerCase().trim()});var cm={};
+    hdrs.forEach(function(h,i){if(h.includes('concepto'))cm.concepto=i;else if(h.includes('nombre'))cm.nombre=i;else if(h.includes('posici'))cm.posicion=i;else if(h.includes('empresa'))cm.empresa=i;else if(h.includes('bruto'))cm.bruto=i;else if(h.includes('factor'))cm.factor=i;else if(h.includes('costo final'))cm.costoFinal=i;else if(h.includes('cdir')&&h.includes('recsa'))cm.cdirR=i;else if(h.includes('fijo')&&h.includes('recsa'))cm.fijoR=i;else if(h.includes('log')&&h.includes('recsa'))cm.logisR=i;else if(h.includes('back')&&h.includes('recsa'))cm.backR=i;else if(h.includes('cdir')&&h.includes('vivalce'))cm.cdirV=i;else if(h.includes('fijo')&&h.includes('vivalce'))cm.fijoV=i;else if(h.includes('log')&&h.includes('vivalce'))cm.logisV=i;else if(h.includes('back')&&h.includes('vivalce'))cm.backV=i;});
+    G=[];for(var r=1;r<rows.length;r++){var row=rows[r];var concepto=String(row[cm.concepto]||'').trim();var nombre=String(row[cm.nombre]||'').trim();if(!concepto&&!nombre)continue;if(concepto==='RESUMEN'||concepto==='Total')continue;
+    var bruto=parseFloat(row[cm.bruto])||0;var factor=parseFloat(row[cm.factor])||0;var cf=parseFloat(row[cm.costoFinal]);if(isNaN(cf)||cf===0)cf=factor===0?bruto:bruto*(1+factor);if(cf===0)continue;
+    var pf=function(v){var n=parseFloat(v);return isNaN(n)?0:n};
+    G.push({concepto:concepto,nombre:nombre,posicion:String(row[cm.posicion]||'').trim(),empresa:String(row[cm.empresa]||'').trim(),costo_final:cf,pct_cdir_r:pf(row[cm.cdirR]),pct_fijo_r:pf(row[cm.fijoR]),pct_logis_r:pf(row[cm.logisR]),pct_back_r:pf(row[cm.backR]),pct_cdir_v:pf(row[cm.cdirV]),pct_fijo_v:pf(row[cm.fijoV]),pct_logis_v:pf(row[cm.logisV]),pct_back_v:pf(row[cm.backV])});}
+    G.forEach(function(g,i){GA[i]={cdir_r:g.pct_cdir_r,fijo_r:g.pct_fijo_r,logis_r:g.pct_logis_r,back_r:g.pct_back_r,cdir_v:g.pct_cdir_v,fijo_v:g.pct_fijo_v,logis_v:g.pct_logis_v,back_v:g.pct_back_v};});
+    renderGastos();
+  }catch(err){alert('Error: '+err.message);}};reader.readAsArrayBuffer(file);
+}
+
+// ===== LOAD MASTER EXCEL =====
+function loadMaster(file){
+  if(!file)return;var reader=new FileReader();
+  reader.onload=function(e){try{
+    var wb=XLSX.read(e.target.result,{type:'array'});var ws=wb.Sheets[wb.SheetNames[0]];var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:0,raw:true});
+    var hdrs=rows[0].map(function(h){return String(h||'').toLowerCase().trim()});var cm={};
+    hdrs.forEach(function(h,i){if(h.includes('línea')||h.includes('linea'))cm.l=i;else if(h.includes('producto'))cm.p=i;else if(h.includes('precio'))cm.pv=i;else if(h.includes('mp'))cm.mp=i;else if(h.includes('rendimiento'))cm.r=i;else if(h.includes('vol'))cm.v=i;else if(h.includes('origen'))cm.o=i;else if(h.includes('lead'))cm.lt=i;else if(h.includes('stock seg')||h.includes('seguridad'))cm.ss=i;});
+    var newP=[];for(var r=1;r<rows.length;r++){var row=rows[r];var prod=String(row[cm.p]||'').trim();if(!prod)continue;var pf=function(v){var n=parseFloat(v);return isNaN(n)?0:Math.abs(n)};
+    newP.push({l:String(row[cm.l]||'').trim(),p:prod,pv:pf(row[cm.pv]),mp:pf(row[cm.mp]),r:pf(row[cm.r])||1,v:pf(row[cm.v]),am:0,ifin:0,o:cm.o!==undefined?String(row[cm.o]||'').trim():'LOCAL',lt:cm.lt!==undefined?Math.round(pf(row[cm.lt]))||30:30,ss:cm.ss!==undefined?Math.round(pf(row[cm.ss]))||15:15});}
+    if(newP.length>0){P=newP;document.getElementById('dataSource').textContent='Excel: '+file.name+' ('+newP.length+')';document.getElementById('dataSource').style.color='var(--gn)';renderContent();}
+  }catch(err){alert('Error: '+err.message);}};reader.readAsArrayBuffer(file);
+}
+
+// ===== EXPORT =====
+function exportCSV(){
+  var all=calcAllPL();var gf=gp('pGF')+gp('pBACK');
+  var csv='Línea,Producto,Precio,MP,Rend,MP_Rend,MOD,Imp,Flete,CMG,CMG%,GF,EBITDA,EBITDA%,Vol,Revenue,EBITDA Total,CF Inv\n';
+  for(var i=0;i<all.length;i++){var c=all[i];csv+='"'+c.l+'","'+c.p+'",'+fd(c.pv)+','+c.mp.toFixed(4)+','+c.r+','+c.mp.toFixed(4)+','+fd(c.mod)+','+fd(c.imp)+','+fd(c.fl)+','+fd(c.cmg)+','+(c.cmgPct*100).toFixed(1)+','+fd(gf)+','+fd(c.ebitda)+','+(c.ebitdaPct*100).toFixed(1)+','+c.v+','+c.rev.toFixed(0)+','+c.ebitdaAbs.toFixed(0)+','+c.cfi.toFixed(4)+'\n';}
+  var b=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='RECSA_PL_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+// ===== PDF EXPORT =====
+function exportVentasPDF(){
+  // [FIX 2026-08-24] Antes, si jsPDF no llegaba a cargar (sin internet al abrir
+  // el archivo, o el navegador bloqueando la descarga por abrirse desde
+  // file://) el botón no hacía nada, sin avisar. Ahora se verifica primero y
+  // se envuelve todo en try/catch para dar un mensaje claro en vez de silencio.
+  if(typeof jspdf==='undefined'||typeof jspdf.jsPDF!=='function'){
+    alert('No se pudo generar el PDF: la librería jsPDF no cargó.\n\nEsto pasa si no había internet en el momento de abrir este archivo (jsPDF se descarga de un CDN externo), o si el navegador bloqueó la descarga por abrirse el HTML con doble clic (file://) en vez de servirlo desde una URL http(s).\n\nProbá: 1) abrir el archivo con internet activo, o 2) recargar la página con conexión, o 3) usar Ctrl+P / Imprimir como alternativa.');
+    return;
+  }
+  try{
+  var all=calcAllPL();var mod=gp('pMOD'),fl=gp('pFL'),gf=gp('pGF'),back=gp('pBACK'),fin=gp('pFIN'),otrosImp=gp('pOTROSIMP'),impPct=gp('pIMP')/100;
+  var items=[];
+  // [ACTUALIZADO 2026-09-03] A pedido: se igualó esta lista con "Exportar
+  // PDF" — ahora usa CMG 20%/30%/40%/50% en vez de +20%/+30%/+40%, mismo
+  // criterio (Materia Prima + MOD + Flete + Impuesto, sin estructura).
+  for(var i=0;i<all.length;i++){var c=all[i];if(c.mp<=0)continue;
+    var pBE=c.sinEstructura?(c.mp/(1-impPct)):((c.mp+mod+fl+gf+back+fin+otrosImp)/(1-impPct));
+    var pCMG20=c.sinEstructura?(c.mp/(1-impPct-0.20)):((c.mp+mod+fl)/(1-impPct-0.20));
+    var pCMG30=c.sinEstructura?(c.mp/(1-impPct-0.30)):((c.mp+mod+fl)/(1-impPct-0.30));
+    var pCMG40=c.sinEstructura?(c.mp/(1-impPct-0.40)):((c.mp+mod+fl)/(1-impPct-0.40));
+    var pCMG50=c.sinEstructura?(c.mp/(1-impPct-0.50)):((c.mp+mod+fl)/(1-impPct-0.50));
+    items.push({l:c.l,p:c.p,pBE:pBE,pCMG20:pCMG20,pCMG30:pCMG30,pCMG40:pCMG40,pCMG50:pCMG50});
+  }
+  items.sort(function(a,b){return a.l.localeCompare(b.l)||a.p.localeCompare(b.p)});
+  var doc=new jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pageW=doc.internal.pageSize.getWidth();
+  doc.setFillColor(26,34,53);doc.rect(0,0,pageW,32,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(79,140,255);
+  doc.text('RECSA',14,16);doc.setTextColor(232,236,244);doc.text(' \u2014 Lista de Precios Venta',14+doc.getTextWidth('RECSA'),16);
+  doc.setFontSize(10);doc.setTextColor(136,153,180);
+  doc.text('5 escenarios (USD/kg): CMG 20% | 30% | 40% | 50% | Breakeven',14,26);
+  doc.text(new Date().toLocaleDateString('es-AR'),pageW-14,26,{align:'right'});
+  var tBody=items.map(function(c){return[c.l,c.p,c.pCMG20.toFixed(2),c.pCMG30.toFixed(2),c.pCMG40.toFixed(2),c.pCMG50.toFixed(2),c.pBE.toFixed(2)];});
+  doc.autoTable({startY:38,
+    head:[['L\u00ednea','Producto','CMG 20%','CMG 30%','CMG 40%','CMG 50%','Breakeven']],
+    body:tBody,theme:'grid',
+    styles:{fontSize:7,cellPadding:1.5,font:'helvetica'},
+    headStyles:{fillColor:[26,34,53],textColor:[232,236,244],fontStyle:'bold',fontSize:7},
+    columnStyles:{0:{cellWidth:14},1:{cellWidth:64},2:{cellWidth:17,halign:'right'},3:{cellWidth:17,halign:'right'},4:{cellWidth:17,halign:'right'},5:{cellWidth:17,halign:'right'},6:{cellWidth:19,halign:'right'}},
+    alternateRowStyles:{fillColor:[245,247,250]},
+    margin:{left:14,right:14}
+  });
+  var pc=doc.internal.getNumberOfPages();for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFontSize(7);doc.setTextColor(150);doc.text('RECSA \u2014 Lista de Precios Venta \u00b7 '+new Date().toLocaleString('es-AR')+' \u00b7 P\u00e1gina '+p+'/'+pc,pageW/2,doc.internal.pageSize.getHeight()-5,{align:'center'});}
+  doc.save('RECSA_Precios_Venta_'+new Date().toISOString().slice(0,10)+'.pdf');
+  }catch(err){
+    alert('Error al generar el PDF: '+err.message+'\n\nSi el problema persiste, avisale a soporte con este mensaje.');
+    console.error('exportVentasPDF error:', err);
+  }
+}
+
+function exportPricingPDF(){
+  if(typeof jspdf==='undefined'||typeof jspdf.jsPDF!=='function'){
+    alert('No se pudo generar el PDF: la librería jsPDF no cargó.\n\nEsto pasa si no había internet en el momento de abrir este archivo (jsPDF se descarga de un CDN externo), o si el navegador bloqueó la descarga por abrirse el HTML con doble clic (file://) en vez de servirlo desde una URL http(s).\n\nProbá: 1) abrir el archivo con internet activo, o 2) recargar la página con conexión, o 3) usar Ctrl+P / Imprimir como alternativa.');
+    return;
+  }
+  try{
+  var all=calcAllPL();var mod=gp('pMOD'),fl=gp('pFL'),gf=gp('pGF'),back=gp('pBACK'),fin=gp('pFIN'),otrosImp=gp('pOTROSIMP'),impPct=gp('pIMP')/100;
+  var items=[];
+  for(var i=0;i<all.length;i++){var c=all[i];if(c.mp<=0)continue;
+    var pBE=c.sinEstructura?(c.mp/(1-impPct)):((c.mp+mod+fl+gf+back+fin+otrosImp)/(1-impPct));
+    var pCMG20=c.sinEstructura?(c.mp/(1-impPct-0.20)):((c.mp+mod+fl)/(1-impPct-0.20));
+    var pCMG30=c.sinEstructura?(c.mp/(1-impPct-0.30)):((c.mp+mod+fl)/(1-impPct-0.30));
+    var pCMG40=c.sinEstructura?(c.mp/(1-impPct-0.40)):((c.mp+mod+fl)/(1-impPct-0.40));
+    var pCMG50=c.sinEstructura?(c.mp/(1-impPct-0.50)):((c.mp+mod+fl)/(1-impPct-0.50));
+    var etiqueta=c.esFazon?' [FAZON]':(c.esUnidad?' [UNIDAD]':'');
+    items.push({l:c.l,p:c.p+etiqueta,pCMG20:pCMG20,pBE:pBE,pCMG30:pCMG30,pCMG40:pCMG40,pCMG50:pCMG50});
+  }
+  items.sort(function(a,b){return a.l.localeCompare(b.l)||a.p.localeCompare(b.p)});
+  var doc=new jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  var pageW=doc.internal.pageSize.getWidth();
+  doc.setFillColor(26,34,53);doc.rect(0,0,pageW,32,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(79,140,255);
+  doc.text('RECSA',14,16);doc.setTextColor(232,236,244);doc.text(' \u2014 Lista de Precios',14+doc.getTextWidth('RECSA'),16);
+  doc.setFontSize(10);doc.setTextColor(136,153,180);
+  doc.text('5 escenarios (USD/kg): CMG 20% | 30% | 40% | 50% | Breakeven',14,26);
+  doc.text(new Date().toLocaleDateString('es-AR'),pageW-14,26,{align:'right'});
+  // [ACTUALIZADO 2026-09-03] A pedido: el Breakeven ahora es COMPLETO — suma
+  // también Financiero y Otros Impuestos (antes solo tenía Materia Prima +
+  // MOD + Flete + GF + Back Office).
+  doc.setFontSize(7);doc.setTextColor(90,90,90);
+  doc.text('CMG 20% / 30% / 40% / 50%: Materia Prima + MOD + Flete + Impuesto (sin Gastos Fijos ni Back Office).',14,37);
+  doc.text('Breakeven: TODOS los costos (Materia Prima + MOD + Flete + Impuesto + Gastos Fijos + Back Office + Financiero + Otros Impuestos).',14,41);
+  var tBody=items.map(function(c){return[c.l,c.p,c.pCMG20.toFixed(2),c.pCMG30.toFixed(2),c.pCMG40.toFixed(2),c.pCMG50.toFixed(2),c.pBE.toFixed(2)];});
+  doc.autoTable({startY:46,
+    head:[['L\u00ednea','Producto','CMG 20%','CMG 30%','CMG 40%','CMG 50%','Breakeven']],
+    body:tBody,theme:'grid',
+    styles:{fontSize:7,cellPadding:1.5,font:'helvetica'},
+    headStyles:{fillColor:[26,34,53],textColor:[232,236,244],fontStyle:'bold',fontSize:7},
+    columnStyles:{0:{cellWidth:14},1:{cellWidth:64},2:{cellWidth:17,halign:'right'},3:{cellWidth:17,halign:'right'},4:{cellWidth:17,halign:'right'},5:{cellWidth:17,halign:'right'},6:{cellWidth:19,halign:'right'}},
+    alternateRowStyles:{fillColor:[245,247,250]},
+    margin:{left:14,right:14}
+  });
+  var pc=doc.internal.getNumberOfPages();for(var p=1;p<=pc;p++){doc.setPage(p);doc.setFontSize(7);doc.setTextColor(150);doc.text('RECSA \u2014 Lista de Precios \u00b7 '+new Date().toLocaleString('es-AR')+' \u00b7 P\u00e1gina '+p+'/'+pc,pageW/2,doc.internal.pageSize.getHeight()-5,{align:'center'});}
+  doc.save('RECSA_Lista_Precios_'+new Date().toISOString().slice(0,10)+'.pdf');
+  }catch(err){
+    alert('Error al generar el PDF: '+err.message+'\n\nSi el problema persiste, avisale a soporte con este mensaje.');
+    console.error('exportPricingPDF error:', err);
+  }
+}
+
+// ===== INIT =====
+renderTabs();renderContent();
+</script>
+</body>
+</html>
